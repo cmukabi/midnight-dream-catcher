@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Midnight Dream Catcher</title>
+
+    <!-- Mobile viewport: full-bleed under notches, no accidental zoom on input focus -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#000000" />
+
+    <!-- Home-screen web-app behaviour (iOS + Android) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Dream Catcher" />
+    <meta name="application-name" content="Dream Catcher" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta
+      name="description"
+      content="A pitch-black bedside companion for capturing dreams by voice before they fade."
+    />
+
+    <style>
+      :root {
+        --black: #000000;
+        --amber: #d97706; /* body text */
+        --amber-hi: #fbbf24; /* emphasis */
+        --amber-dim: #8a4b06; /* secondary text */
+        --amber-faint: #5c3304; /* placeholders, hints */
+        --line: #2e1a02; /* borders */
+        --surface: #0b0600; /* cards */
+        --surface-2: #140b00; /* buttons */
+        --danger: #b45309;
+        --radius: 16px;
+        --tap: 56px;
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--black);
+        color: var(--amber);
+        font:
+          17px/1.55 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          system-ui,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -webkit-text-size-adjust: 100%;
+        overscroll-behavior-y: none;
+      }
+
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: calc(14px + var(--safe-top)) 16px
+          calc(40px + var(--safe-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--amber-dim);
+      }
+      .clock {
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+        color: var(--amber-dim);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--amber-dim);
+      }
+
+      button {
+        appearance: none;
+        font: inherit;
+        color: var(--amber-hi);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        min-height: var(--tap);
+        padding: 0 18px;
+        font-weight: 700;
+        cursor: pointer;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      button:active {
+        transform: scale(0.98);
+      }
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--amber);
+        outline-offset: 2px;
+      }
+      button[disabled] {
+        opacity: 0.5;
+        cursor: progress;
+      }
+
+      /* Giant dictate button --------------------------------------------------- */
+      .dictate {
+        width: 100%;
+        min-height: 112px;
+        border: 2px solid var(--amber);
+        background: #1a0e00;
+        font-size: 21px;
+        letter-spacing: 0.04em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+      .dictate.listening {
+        background: #241200;
+        border-color: var(--amber-hi);
+      }
+      .rec-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--danger);
+        animation: pulse 1.1s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.25;
+          transform: scale(0.8);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rec-dot {
+          animation: none;
+        }
+      }
+
+      .interim {
+        min-height: 26px;
+        margin-top: -6px;
+        font-style: italic;
+        color: var(--amber-dim);
+        overflow-wrap: anywhere;
+      }
+
+      /* Cards ------------------------------------------------------------------ */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .meta {
+        font-size: 13px;
+        color: var(--amber-dim);
+        font-variant-numeric: tabular-nums;
+      }
+      .saved-flag {
+        font-size: 13px;
+        color: var(--amber-dim);
+        transition: color 300ms;
+      }
+      .saved-flag.fresh {
+        color: var(--amber-hi);
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        font: inherit;
+        font-size: 18px; /* >=16px stops iOS zooming on focus */
+        color: var(--amber-hi);
+        background: var(--black);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        caret-color: var(--amber-hi);
+      }
+      textarea {
+        min-height: 38vh;
+        resize: vertical;
+        line-height: 1.6;
+      }
+      input {
+        min-height: var(--tap);
+      }
+      ::placeholder {
+        color: var(--amber-faint);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .row .wide {
+        grid-column: 1 / -1;
+      }
+
+      .frame-area:empty {
+        display: none;
+      }
+      .frame-area {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .frame-area img {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        filter: brightness(0.82) sepia(0.15); /* softens glare at night */
+      }
+      .notice {
+        padding: 14px;
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        color: var(--amber);
+        font-size: 15px;
+      }
+      .notice strong {
+        color: var(--amber-hi);
+      }
+
+      /* Saved dreams ----------------------------------------------------------- */
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .empty {
+        color: var(--amber-faint);
+        font-size: 15px;
+        padding: 4px 2px;
+      }
+      .entry {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 14px;
+      }
+      .entry.current {
+        border-color: var(--amber-dim);
+      }
+      .entry-text {
+        margin: 8px 0 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .entry-text.expanded {
+        display: block;
+      }
+      .entry img {
+        width: 100%;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        filter: brightness(0.82) sepia(0.15);
+      }
+      .entry-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .entry-actions button {
+        padding: 0 8px;
+        font-size: 15px;
+      }
+      .btn-delete.confirm {
+        border-color: var(--danger);
+        color: var(--danger);
+      }
+
+      /* Settings --------------------------------------------------------------- */
+      details {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+      summary {
+        min-height: var(--tap);
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        font-weight: 700;
+        color: var(--amber-hi);
+        cursor: pointer;
+        list-style: none;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::after {
+        content: "\25BE";
+        margin-left: auto;
+        color: var(--amber-dim);
+        transition: transform 200ms;
+      }
+      details[open] summary::after {
+        transform: rotate(180deg);
+      }
+      .settings-body {
+        padding: 0 16px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      label {
+        font-size: 14px;
+        color: var(--amber-dim);
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--amber-dim);
+        margin: 0;
+      }
+
+      /* Toast ------------------------------------------------------------------ */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(20px + var(--safe-bottom));
+        transform: translate(-50%, 20px);
+        max-width: calc(100% - 32px);
+        padding: 12px 18px;
+        border-radius: 999px;
+        background: #1f1100;
+        border: 1px solid var(--amber-dim);
+        color: var(--amber-hi);
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 200ms,
+          transform 200ms;
+        z-index: 10;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Midnight Dream Catcher</h1>
+        <span class="clock" id="clock" aria-hidden="true"></span>
+      </header>
+
+      <button
+        class="dictate"
+        id="dictateBtn"
+        type="button"
+        aria-pressed="false"
+      >
+        <span id="dictateLabel">🎤 TAP TO DICTATE DREAM</span>
+      </button>
+      <div class="interim" id="interim" aria-live="polite"></div>
+
+      <section class="card" aria-labelledby="dreamHeading">
+        <div class="card-head">
+          <h2 id="dreamHeading">Tonight's Dream</h2>
+          <span class="saved-flag" id="savedFlag" aria-live="polite"></span>
+        </div>
+        <div class="meta" id="dreamMeta"></div>
+        <label for="dreamText" class="sr-only">Dream log</label>
+        <textarea
+          id="dreamText"
+          placeholder="Your dream lands here, word by word. Mumble freely: everything saves automatically."
+          spellcheck="false"
+        ></textarea>
+
+        <div class="row">
+          <button type="button" id="readBtn">🔊 Read Back</button>
+          <button type="button" id="newBtn">🌙 New Dream</button>
+          <button type="button" id="visualizeBtn" class="wide">
+            🎬 Visualize Dream Frame
+          </button>
+        </div>
+        <div class="frame-area" id="frameArea" aria-live="polite"></div>
+      </section>
+
+      <section
+        aria-labelledby="savedHeading"
+        style="display: flex; flex-direction: column; gap: 12px"
+      >
+        <h2 id="savedHeading">Saved Dreams</h2>
+        <div class="list" id="dreamList"></div>
+      </section>
+
+      <details id="settings">
+        <summary>⚙️ Settings</summary>
+        <div class="settings-body">
+          <label for="apiKey"
+            >OpenAI API key (optional, for dream frames)</label
+          >
+          <input
+            id="apiKey"
+            type="password"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="sk-…"
+          />
+          <label for="imageModel">Image model</label>
+          <input
+            id="imageModel"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="gpt-image-2"
+          />
+          <div class="row">
+            <button type="button" id="saveKeyBtn">Save</button>
+            <button type="button" id="clearKeyBtn">Clear Key</button>
+          </div>
+          <p class="hint" id="keyStatus"></p>
+          <p class="hint">
+            Your key stays in this browser's local storage on this phone and is
+            sent only to OpenAI. Each frame is billed to your OpenAI account.
+          </p>
+        </div>
+      </details>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (() => {
+        "use strict";
+
+        // =========================================================================
+        // Config
+        // =========================================================================
+
+        const STORAGE = {
+          dreams: "mdc.dreams.v1",
+          current: "mdc.currentId.v1",
+          apiKey: "mdc.openaiKey.v1",
+          model: "mdc.imageModel.v1",
+        };
+        const DEFAULT_IMAGE_MODEL = "gpt-image-2"; // dall-e-3 was retired on 2026-05-12
+        const IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
+        const IMAGE_SIZE = "1536x1024"; // landscape, storyboard-shaped
+        const IMAGE_TIMEOUT_MS = 120000;
+        const PROMPT_MAX_CHARS = 3500;
+        const SAVE_DEBOUNCE_MS = 400;
+        const THUMB_MAX_WIDTH = 768; // stored frames are downscaled JPEGs to fit localStorage
+        const MAX_RESTARTS_PER_10S = 6;
+
+        // =========================================================================
+        // Helpers
+        // =========================================================================
+
+        const $ = (id) => document.getElementById(id);
+        const els = {
+          clock: $("clock"),
+          dictateBtn: $("dictateBtn"),
+          dictateLabel: $("dictateLabel"),
+          interim: $("interim"),
+          savedFlag: $("savedFlag"),
+          dreamMeta: $("dreamMeta"),
+          dreamText: $("dreamText"),
+          readBtn: $("readBtn"),
+          newBtn: $("newBtn"),
+          visualizeBtn: $("visualizeBtn"),
+          frameArea: $("frameArea"),
+          dreamList: $("dreamList"),
+          apiKey: $("apiKey"),
+          imageModel: $("imageModel"),
+          saveKeyBtn: $("saveKeyBtn"),
+          clearKeyBtn: $("clearKeyBtn"),
+          keyStatus: $("keyStatus"),
+          toast: $("toast"),
+        };
+
+        function el(tag, className, text) {
+          const node = document.createElement(tag);
+          if (className) node.className = className;
+          if (text != null) node.textContent = text;
+          return node;
+        }
+
+        let toastTimer = null;
+        function toast(message, ms = 2600) {
+          els.toast.textContent = message;
+          els.toast.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => els.toast.classList.remove("show"), ms);
+        }
+
+        const dateFmt = new Intl.DateTimeFormat(undefined, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        const clockFmt = new Intl.DateTimeFormat(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        const formatStamp = (ms) => dateFmt.format(new Date(ms));
+
+        function readStore(key, fallback) {
+          try {
+            const raw = localStorage.getItem(key);
+            return raw == null ? fallback : JSON.parse(raw);
+          } catch {
+            return fallback;
+          }
+        }
+
+        /** Returns false (instead of throwing) when storage is full or blocked. */
+        function writeStore(key, value) {
+          try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+          } catch {
+            return false;
+          }
+        }
+
+        async function copyText(text) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch {
+            const scratch = el("textarea");
+            scratch.value = text;
+            scratch.setAttribute("readonly", "");
+            scratch.style.cssText = "position:fixed;top:-1000px;opacity:0;";
+            document.body.append(scratch);
+            scratch.select();
+            let ok = false;
+            try {
+              ok = document.execCommand("copy");
+            } catch {
+              ok = false;
+            }
+            scratch.remove();
+            return ok;
+          }
+        }
+
+        // =========================================================================
+        // Dream store (localStorage)
+        // =========================================================================
+
+        /** @type {{id:string, createdAt:number, updatedAt:number, text:string, image?:string}[]} */
+        let dreams = readStore(STORAGE.dreams, []);
+        if (!Array.isArray(dreams)) dreams = [];
+        let currentId = readStore(STORAGE.current, null);
+        const sessionImages = new Map(); // full-size frames too big to persist
+
+        const newId = () =>
+          `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const currentDream = () =>
+          dreams.find((d) => d.id === currentId) || null;
+
+        function persistDreams() {
+          const ok =
+            writeStore(STORAGE.dreams, dreams) &&
+            writeStore(STORAGE.current, currentId);
+          if (!ok)
+            toast(
+              "Phone storage is full. Delete an old dream or frame to keep saving.",
+              4500,
+            );
+          return ok;
+        }
+
+        /** Creates the current entry lazily, on the first word. */
+        function ensureCurrentDream() {
+          let dream = currentDream();
+          if (!dream) {
+            const now = Date.now();
+            dream = { id: newId(), createdAt: now, updatedAt: now, text: "" };
+            dreams.unshift(dream);
+            currentId = dream.id;
+          }
+          return dream;
+        }
+
+        let saveTimer = null;
+        function scheduleSave() {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(saveNow, SAVE_DEBOUNCE_MS);
+        }
+
+        function saveNow() {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+          const text = els.dreamText.value;
+          const existing = currentDream();
+          if (!existing && !text.trim()) return;
+
+          const dream = ensureCurrentDream();
+          if (dream.text === text) return;
+          dream.text = text;
+          dream.updatedAt = Date.now();
+          if (persistDreams()) flashSaved();
+          renderMeta();
+          renderList();
+        }
+
+        let savedFlagTimer = null;
+        function flashSaved() {
+          els.savedFlag.textContent = "Saved ✓";
+          els.savedFlag.classList.add("fresh");
+          clearTimeout(savedFlagTimer);
+          savedFlagTimer = setTimeout(
+            () => els.savedFlag.classList.remove("fresh"),
+            900,
+          );
+        }
+
+        function startNewDream() {
+          saveNow();
+          const dream = currentDream();
+          if (dream && !dream.text.trim())
+            dreams = dreams.filter((d) => d.id !== dream.id);
+          currentId = null;
+          persistDreams();
+          els.dreamText.value = "";
+          els.frameArea.replaceChildren();
+          els.savedFlag.textContent = "";
+          renderMeta();
+          renderList();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function openDream(id) {
+          saveNow();
+          const dream = dreams.find((d) => d.id === id);
+          if (!dream) return;
+          currentId = id;
+          persistDreams();
+          els.dreamText.value = dream.text;
+          showStoredFrame(dream);
+          renderMeta();
+          renderList();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function deleteDream(id) {
+          dreams = dreams.filter((d) => d.id !== id);
+          sessionImages.delete(id);
+          if (id === currentId) {
+            currentId = null;
+            els.dreamText.value = "";
+            els.frameArea.replaceChildren();
+            els.savedFlag.textContent = "";
+          }
+          persistDreams();
+          renderMeta();
+          renderList();
+        }
+
+        // =========================================================================
+        // Rendering
+        // =========================================================================
+
+        function renderMeta() {
+          const dream = currentDream();
+          els.dreamMeta.textContent = dream
+            ? `Started ${formatStamp(dream.createdAt)}`
+            : "Starts saving with your first word.";
+        }
+
+        function renderList() {
+          els.dreamList.replaceChildren();
+          const saved = dreams.filter((d) => d.text.trim() || d.image);
+          if (saved.length === 0) {
+            els.dreamList.append(
+              el(
+                "div",
+                "empty",
+                "No dreams saved yet. Your first one will appear here.",
+              ),
+            );
+            return;
+          }
+
+          for (const dream of saved) {
+            const item = el(
+              "article",
+              dream.id === currentId ? "entry current" : "entry",
+            );
+            const stamp = el(
+              "div",
+              "meta",
+              `${formatStamp(dream.createdAt)}${dream.id === currentId ? " · open above" : ""}`,
+            );
+            const text = el(
+              "div",
+              "entry-text",
+              dream.text.trim() || "(frame only)",
+            );
+            text.addEventListener("click", () =>
+              text.classList.toggle("expanded"),
+            );
+            item.append(stamp, text);
+
+            const image = sessionImages.get(dream.id) || dream.image;
+            if (image) {
+              const img = el("img");
+              img.src = image;
+              img.alt = "Storyboard frame for this dream";
+              img.loading = "lazy";
+              item.append(img);
+            }
+
+            const actions = el("div", "entry-actions");
+            const open = el("button", "", "Open");
+            open.type = "button";
+            open.addEventListener("click", () => openDream(dream.id));
+
+            const copy = el("button", "", "Copy");
+            copy.type = "button";
+            copy.addEventListener("click", async () => {
+              const ok = await copyText(
+                `${formatStamp(dream.createdAt)}\n\n${dream.text.trim()}`,
+              );
+              toast(
+                ok
+                  ? "Dream copied."
+                  : "Copy blocked. Press and hold the text to copy.",
+              );
+            });
+
+            // Two-tap delete: no browser dialogs blasting light at 3am.
+            const del = el("button", "btn-delete", "Delete");
+            del.type = "button";
+            let armTimer = null;
+            del.addEventListener("click", () => {
+              if (del.classList.contains("confirm")) {
+                clearTimeout(armTimer);
+                deleteDream(dream.id);
+                toast("Dream deleted.");
+                return;
+              }
+              del.classList.add("confirm");
+              del.textContent = "Sure?";
+              armTimer = setTimeout(() => {
+                del.classList.remove("confirm");
+                del.textContent = "Delete";
+              }, 3000);
+            });
+
+            actions.append(open, copy, del);
+            item.append(actions);
+            els.dreamList.append(item);
+          }
+        }
+
+        function tickClock() {
+          els.clock.textContent = clockFmt.format(new Date());
+        }
+
+        // =========================================================================
+        // Voice capture (Web Speech API)
+        // =========================================================================
+
+        const Recognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        const RECOGNITION_ERRORS = {
+          "not-allowed":
+            "Microphone blocked. Allow mic access for this site in your browser settings.",
+          "service-not-allowed":
+            "Speech recognition is not allowed here. Try opening the page in Safari or Chrome directly.",
+          "audio-capture": "No microphone found.",
+          network: "Dictation needs an internet connection.",
+          "language-not-supported":
+            "Dictation does not support your phone language.",
+        };
+
+        const voice = {
+          recognition: null,
+          listening: false,
+          fatal: false,
+          interim: "",
+          restarts: [],
+        };
+        let wakeLock = null;
+
+        function setDictateUI(on) {
+          els.dictateBtn.classList.toggle("listening", on);
+          els.dictateBtn.setAttribute("aria-pressed", String(on));
+          els.dictateBtn.replaceChildren();
+          if (on) {
+            els.dictateBtn.append(
+              el("span", "rec-dot"),
+              el("span", "", "LISTENING… TAP TO STOP"),
+            );
+          } else {
+            els.dictateBtn.append(el("span", "", "🎤 TAP TO DICTATE DREAM"));
+          }
+        }
+
+        /** Appends words to the log and saves immediately. */
+        function commitWords(raw) {
+          let words = String(raw).replace(/\s+/g, " ").trim();
+          if (!words) return;
+          const current = els.dreamText.value;
+          const newSentence =
+            !current.trim() || /[.!?]\s*$|\n\s*$/.test(current);
+          if (newSentence)
+            words = words.charAt(0).toUpperCase() + words.slice(1);
+          const sep = current && !/\s$/.test(current) ? " " : "";
+          els.dreamText.value = `${current}${sep}${words}`;
+          els.dreamText.scrollTop = els.dreamText.scrollHeight;
+          saveNow();
+        }
+
+        function commitPendingInterim() {
+          if (voice.interim) commitWords(voice.interim);
+          voice.interim = "";
+          els.interim.textContent = "";
+        }
+
+        async function acquireWakeLock() {
+          try {
+            if ("wakeLock" in navigator)
+              wakeLock = await navigator.wakeLock.request("screen");
+          } catch {
+            wakeLock = null; // not critical
+          }
+        }
+
+        function releaseWakeLock() {
+          wakeLock?.release().catch(() => {});
+          wakeLock = null;
+        }
+
+        function startDictation() {
+          if (!Recognition) {
+            toast(
+              "Voice dictation is not supported in this browser. Try Chrome on Android or Safari on iPhone.",
+              5000,
+            );
+            return;
+          }
+          stopReading();
+
+          const rec = new Recognition();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = navigator.language || "en-US";
+
+          rec.onresult = (event) => {
+            let interim = "";
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+              const result = event.results[i];
+              if (result.isFinal) commitWords(result[0].transcript);
+              else interim += result[0].transcript;
+            }
+            voice.interim = interim.trim();
+            els.interim.textContent = voice.interim;
+          };
+
+          rec.onerror = (event) => {
+            if (event.error === "no-speech" || event.error === "aborted")
+              return;
+            voice.fatal = true;
+            toast(
+              RECOGNITION_ERRORS[event.error] ||
+                "Dictation stopped unexpectedly.",
+              5000,
+            );
+          };
+
+          // Phones end "continuous" sessions after silence. Save any half-heard
+          // words, then quietly restart while the user still wants to dictate.
+          rec.onend = () => {
+            if (voice.recognition !== rec) return;
+            commitPendingInterim();
+            const now = Date.now();
+            voice.restarts = voice.restarts.filter((t) => now - t < 10000);
+            if (
+              voice.listening &&
+              !voice.fatal &&
+              voice.restarts.length < MAX_RESTARTS_PER_10S
+            ) {
+              voice.restarts.push(now);
+              try {
+                rec.start();
+                return;
+              } catch {
+                // fall through
+              }
+            }
+            finishDictation();
+          };
+
+          voice.recognition = rec;
+          voice.listening = true;
+          voice.fatal = false;
+          voice.restarts = [];
+
+          try {
+            rec.start();
+          } catch {
+            toast("Could not start the microphone.", 4000);
+            finishDictation();
+            return;
+          }
+          setDictateUI(true);
+          acquireWakeLock();
+        }
+
+        function stopDictation() {
+          voice.listening = false;
+          if (voice.recognition)
+            voice.recognition.stop(); // onend commits + finishes
+          else finishDictation();
+        }
+
+        function finishDictation() {
+          commitPendingInterim();
+          voice.recognition = null;
+          voice.listening = false;
+          setDictateUI(false);
+          releaseWakeLock();
+        }
+
+        // =========================================================================
+        // Read back (speechSynthesis)
+        // =========================================================================
+
+        const reader = { session: 0, speaking: false };
+
+        function chunkForSpeech(text, max = 200) {
+          const sentences =
+            text
+              .replace(/\s+/g, " ")
+              .trim()
+              .match(/[^.!?]+[.!?]*\s*/g) || [];
+          const chunks = [];
+          let current = "";
+          for (const sentence of sentences) {
+            const pieces =
+              sentence.length > max ? sentence.split(/(?<=\s)/) : [sentence];
+            for (const piece of pieces) {
+              if ((current + piece).length > max && current) {
+                chunks.push(current.trim());
+                current = "";
+              }
+              current += piece;
+            }
+          }
+          if (current.trim()) chunks.push(current.trim());
+          return chunks;
+        }
+
+        function setReadUI(on) {
+          els.readBtn.textContent = on ? "■ Stop" : "🔊 Read Back";
+          els.readBtn.setAttribute("aria-pressed", String(on));
+        }
+
+        function toggleReading() {
+          if (!("speechSynthesis" in window)) {
+            toast("Read-back is not supported in this browser.");
+            return;
+          }
+          if (reader.speaking) {
+            stopReading();
+            return;
+          }
+          const chunks = chunkForSpeech(els.dreamText.value);
+          if (chunks.length === 0) {
+            toast("Nothing to read yet.");
+            return;
+          }
+          if (voice.listening) stopDictation(); // don't transcribe our own voice
+
+          speechSynthesis.cancel();
+          const session = ++reader.session;
+          reader.speaking = true;
+          setReadUI(true);
+
+          chunks.forEach((chunk, i) => {
+            const u = new SpeechSynthesisUtterance(chunk);
+            u.lang = navigator.language || "en-US";
+            u.rate = 0.92; // a little slower for a sleepy brain
+            u.volume = 0.8; // gentler at night
+            if (i === chunks.length - 1) {
+              u.onend = () => {
+                if (session === reader.session) finishReading();
+              };
+            }
+            u.onerror = (e) => {
+              if (session !== reader.session) return;
+              if (e.error !== "interrupted" && e.error !== "canceled")
+                toast("Read-back stopped.");
+              finishReading();
+            };
+            speechSynthesis.speak(u);
+          });
+        }
+
+        function stopReading() {
+          reader.session += 1;
+          if ("speechSynthesis" in window) speechSynthesis.cancel();
+          finishReading();
+        }
+
+        function finishReading() {
+          reader.speaking = false;
+          setReadUI(false);
+        }
+
+        // =========================================================================
+        // Settings
+        // =========================================================================
+
+        const getApiKey = () => readStore(STORAGE.apiKey, "") || "";
+        const getModel = () =>
+          readStore(STORAGE.model, "") || DEFAULT_IMAGE_MODEL;
+
+        function renderKeyStatus() {
+          const key = getApiKey();
+          els.keyStatus.textContent = key
+            ? `Key saved (••••${key.slice(-4)}). Model: ${getModel()}.`
+            : "No key saved. Dreams still save; frames need a key.";
+          els.apiKey.value = "";
+          els.imageModel.value = readStore(STORAGE.model, "") || "";
+        }
+
+        function saveSettings() {
+          const key = els.apiKey.value.trim();
+          const model = els.imageModel.value.trim();
+          if (key && /\s/.test(key)) {
+            toast("That key has spaces in it. Paste it again.");
+            return;
+          }
+          if (key) writeStore(STORAGE.apiKey, key);
+          writeStore(STORAGE.model, model);
+          renderKeyStatus();
+          toast(key ? "Key saved on this phone." : "Settings saved.");
+        }
+
+        function clearKey() {
+          try {
+            localStorage.removeItem(STORAGE.apiKey);
+          } catch {
+            /* ignore */
+          }
+          renderKeyStatus();
+          toast("Key cleared.");
+        }
+
+        // =========================================================================
+        // Storyboard frame (OpenAI Images API)
+        // =========================================================================
+
+        let frameRequest = 0;
+
+        function frameNotice(children) {
+          const box = el("div", "notice");
+          box.append(...children);
+          els.frameArea.replaceChildren(box);
+          return box;
+        }
+
+        function showStoredFrame(dream) {
+          const image = sessionImages.get(dream.id) || dream.image;
+          if (!image) {
+            els.frameArea.replaceChildren();
+            return;
+          }
+          renderFrame(image);
+        }
+
+        function renderFrame(src) {
+          const img = el("img");
+          img.src = src;
+          img.alt = "Cinematic storyboard frame of your dream";
+          els.frameArea.replaceChildren(img);
+        }
+
+        function noKeyNotice(text) {
+          const strong = el(
+            "strong",
+            "",
+            "Add an OpenAI API key in ⚙️ Settings",
+          );
+          const copy = el("button", "", "Copy Dream Text");
+          copy.type = "button";
+          copy.style.width = "100%";
+          copy.style.marginTop = "12px";
+          copy.addEventListener("click", async () => {
+            const ok = await copyText(
+              `Cinematic film storyboard still of this dream: ${text}`,
+            );
+            toast(
+              ok
+                ? "Copied as an image prompt."
+                : "Copy blocked. Press and hold to copy.",
+            );
+          });
+          frameNotice([
+            strong,
+            document.createTextNode(
+              " to turn this dream into a storyboard frame, or copy it as a prompt to use in any image app.",
+            ),
+            copy,
+          ]);
+        }
+
+        /** Downscale to a JPEG so frames fit comfortably in localStorage. */
+        function compressImage(src) {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const scale = Math.min(1, THUMB_MAX_WIDTH / img.naturalWidth);
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.round(img.naturalWidth * scale);
+              canvas.height = Math.round(img.naturalHeight * scale);
+              canvas
+                .getContext("2d")
+                .drawImage(img, 0, 0, canvas.width, canvas.height);
+              try {
+                resolve(canvas.toDataURL("image/jpeg", 0.78));
+              } catch {
+                resolve(null); // tainted canvas (remote URL without CORS)
+              }
+            };
+            img.onerror = () => resolve(null);
+            img.crossOrigin = "anonymous";
+            img.src = src;
+          });
+        }
+
+        async function requestImage(apiKey, body, signal) {
+          return fetch(IMAGE_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(body),
+            signal,
+          });
+        }
+
+        async function readApiError(response) {
+          try {
+            const json = await response.json();
+            return json?.error?.message || "";
+          } catch {
+            return "";
+          }
+        }
+
+        function friendlyImageError(status, apiMessage) {
+          if (status === 401)
+            return "OpenAI rejected the API key. Check it in ⚙️ Settings.";
+          if (status === 403)
+            return "This key is not allowed to use the image model. Your OpenAI organisation may need verification.";
+          if (status === 429)
+            return "OpenAI rate or credit limit reached. Try again later.";
+          if (status >= 500)
+            return "OpenAI is having trouble right now. Try again in a minute.";
+          if (/safety|moderation|policy/i.test(apiMessage))
+            return "OpenAI declined this dream for safety reasons. Try rewording it.";
+          return apiMessage
+            ? `OpenAI: ${apiMessage}`
+            : `OpenAI returned an error (${status}).`;
+        }
+
+        async function visualizeDream() {
+          saveNow();
+          const text = els.dreamText.value.trim();
+          if (!text) {
+            toast("Dictate or type a dream first.");
+            return;
+          }
+
+          const apiKey = getApiKey();
+          if (!apiKey) {
+            noKeyNotice(text);
+            return;
+          }
+
+          const dream = ensureCurrentDream();
+          const requestId = ++frameRequest;
+          const controller = new AbortController();
+          const timeout = setTimeout(
+            () => controller.abort(),
+            IMAGE_TIMEOUT_MS,
+          );
+          els.visualizeBtn.disabled = true;
+          els.visualizeBtn.textContent = "🎬 Developing frame…";
+          frameNotice([
+            document.createTextNode(
+              "Developing your storyboard frame. This can take up to a minute.",
+            ),
+          ]);
+
+          const body = {
+            model: getModel(),
+            prompt: `Cinematic film storyboard still of this dream: ${text.slice(0, PROMPT_MAX_CHARS)}`,
+            size: IMAGE_SIZE,
+            n: 1,
+          };
+
+          try {
+            let response = await requestImage(apiKey, body, controller.signal);
+            // Some models reject specific sizes: retry once with the model's default.
+            if (response.status === 400) {
+              const message = await readApiError(response);
+              if (/size/i.test(message)) {
+                delete body.size;
+                response = await requestImage(apiKey, body, controller.signal);
+              } else {
+                throw Object.assign(
+                  new Error(friendlyImageError(400, message)),
+                  { handled: true },
+                );
+              }
+            }
+            if (!response.ok) {
+              throw Object.assign(
+                new Error(
+                  friendlyImageError(
+                    response.status,
+                    await readApiError(response),
+                  ),
+                ),
+                { handled: true },
+              );
+            }
+
+            const json = await response.json();
+            const item = json?.data?.[0];
+            const src = item?.b64_json
+              ? `data:image/png;base64,${item.b64_json}`
+              : item?.url;
+            if (!src)
+              throw Object.assign(new Error("OpenAI returned no image."), {
+                handled: true,
+              });
+            if (requestId !== frameRequest) return;
+
+            if (currentId === dream.id) renderFrame(src);
+            sessionImages.set(dream.id, src);
+
+            const compact = await compressImage(src);
+            if (compact) {
+              dream.image = compact;
+              if (persistDreams()) sessionImages.delete(dream.id);
+              else delete dream.image; // keep shown for this session only
+            }
+            renderList();
+            toast("Frame developed.");
+          } catch (err) {
+            if (requestId !== frameRequest) return;
+            const message = err?.handled
+              ? err.message
+              : err?.name === "AbortError"
+                ? "The image took too long. Try again."
+                : "Could not reach OpenAI. Check your connection.";
+            frameNotice([document.createTextNode(message)]);
+          } finally {
+            clearTimeout(timeout);
+            if (requestId === frameRequest) {
+              els.visualizeBtn.disabled = false;
+              els.visualizeBtn.textContent = "🎬 Visualize Dream Frame";
+            }
+          }
+        }
+
+        // =========================================================================
+        // Wiring
+        // =========================================================================
+
+        els.dictateBtn.addEventListener("click", () =>
+          voice.listening ? stopDictation() : startDictation(),
+        );
+        els.readBtn.addEventListener("click", toggleReading);
+        els.newBtn.addEventListener("click", startNewDream);
+        els.visualizeBtn.addEventListener("click", visualizeDream);
+        els.dreamText.addEventListener("input", scheduleSave);
+        els.saveKeyBtn.addEventListener("click", saveSettings);
+        els.clearKeyBtn.addEventListener("click", clearKey);
+        els.apiKey.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") saveSettings();
+        });
+
+        // Flush on every way a phone can background or kill the page.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
+            commitPendingInterim();
+            saveNow();
+          } else if (voice.listening) {
+            acquireWakeLock(); // wake locks drop when the page is hidden
+          }
+        });
+        window.addEventListener("pagehide", () => {
+          commitPendingInterim();
+          saveNow();
+        });
+
+        // Initial render
+        const opening = currentDream();
+        if (opening) {
+          els.dreamText.value = opening.text;
+          showStoredFrame(opening);
+        }
+        renderMeta();
+        renderList();
+        renderKeyStatus();
+        tickClock();
+        setInterval(tickClock, 15000);
+      })();
+    </script>
+  </body>
+</html>
