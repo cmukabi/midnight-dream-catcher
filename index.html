@@ -21,7 +21,7 @@
     <meta name="format-detection" content="telephone=no" />
     <meta
       name="description"
-      content="A pitch-black bedside companion for capturing dreams by voice before they fade."
+      content="A pitch-black bedside companion for capturing dreams by voice, then directing them into frames and short videos."
     />
 
     <style>
@@ -34,6 +34,7 @@
         --line: #2e1a02; /* borders */
         --surface: #0b0600; /* cards */
         --surface-2: #140b00; /* buttons */
+        --pill-on: #2a1600;
         --danger: #b45309;
         --radius: 16px;
         --tap: 56px;
@@ -92,7 +93,6 @@
         font-variant-numeric: tabular-nums;
         color: var(--amber-dim);
       }
-
       h2 {
         margin: 0;
         font-size: 14px;
@@ -102,7 +102,8 @@
         color: var(--amber-dim);
       }
 
-      button {
+      button,
+      .btn-link {
         appearance: none;
         font: inherit;
         color: var(--amber-hi);
@@ -117,12 +118,21 @@
         user-select: none;
         -webkit-user-select: none;
       }
-      button:active {
+      .btn-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+      }
+      button:active,
+      .btn-link:active {
         transform: scale(0.98);
       }
       button:focus-visible,
+      .btn-link:focus-visible,
       input:focus-visible,
       textarea:focus-visible,
+      select:focus-visible,
       summary:focus-visible {
         outline: 2px solid var(--amber);
         outline-offset: 2px;
@@ -160,11 +170,6 @@
         50% {
           opacity: 0.25;
           transform: scale(0.8);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .rec-dot {
-          animation: none;
         }
       }
 
@@ -207,7 +212,8 @@
       }
 
       textarea,
-      input {
+      input,
+      select {
         width: 100%;
         font: inherit;
         font-size: 18px; /* >=16px stops iOS zooming on focus */
@@ -219,12 +225,27 @@
         caret-color: var(--amber-hi);
       }
       textarea {
-        min-height: 38vh;
         resize: vertical;
         line-height: 1.6;
       }
-      input {
+      #dreamText {
+        min-height: 34vh;
+      }
+      input,
+      select {
         min-height: var(--tap);
+      }
+      select {
+        appearance: none;
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--amber-dim) 50%),
+          linear-gradient(135deg, var(--amber-dim) 50%, transparent 50%);
+        background-position:
+          calc(100% - 22px) 50%,
+          calc(100% - 16px) 50%;
+        background-size: 6px 6px;
+        background-repeat: no-repeat;
+        padding-right: 40px;
       }
       ::placeholder {
         color: var(--amber-faint);
@@ -238,19 +259,123 @@
       .row .wide {
         grid-column: 1 / -1;
       }
-
-      .frame-area:empty {
-        display: none;
-      }
-      .frame-area {
+      .stack {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
-      .frame-area img {
+
+      /* Drawers (Director + Settings) ------------------------------------------ */
+      details {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+      .card details {
+        background: var(--black);
+      }
+      summary {
+        min-height: var(--tap);
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        font-weight: 700;
+        color: var(--amber-hi);
+        cursor: pointer;
+        list-style: none;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::after {
+        content: "\25BE";
+        margin-left: auto;
+        color: var(--amber-dim);
+        transition: transform 200ms;
+      }
+      details[open] summary::after {
+        transform: rotate(180deg);
+      }
+      .drawer-body {
+        padding: 0 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      label,
+      .field-label {
+        font-size: 14px;
+        color: var(--amber-dim);
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--amber-dim);
+        margin: 0;
+      }
+      .subhead {
+        margin: 8px 0 0;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--amber-dim);
+      }
+
+      .pills {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .pill {
+        min-height: var(--tap);
+        border-radius: 999px;
+        padding: 0 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--amber);
+      }
+      .pill[aria-checked="true"] {
+        background: var(--pill-on);
+        border-color: var(--amber);
+        color: var(--amber-hi);
+      }
+
+      #masterPrompt {
+        min-height: 150px;
+        font-size: 16px;
+      }
+      .prompt-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .prompt-status button {
+        min-height: 44px;
+        font-size: 14px;
+        padding: 0 14px;
+      }
+
+      /* Generation outputs ------------------------------------------------------ */
+      .gen-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .output:empty {
+        display: none;
+      }
+      .output {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .output img,
+      .output video {
         width: 100%;
         border-radius: 14px;
         border: 1px solid var(--line);
+        background: var(--black);
         filter: brightness(0.82) sepia(0.15); /* softens glare at night */
       }
       .notice {
@@ -262,6 +387,53 @@
       }
       .notice strong {
         color: var(--amber-hi);
+      }
+
+      .progress {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .progress[hidden] {
+        display: none;
+      }
+      .progress-label {
+        font-size: 15px;
+        color: var(--amber-hi);
+        font-variant-numeric: tabular-nums;
+      }
+      .progress-track {
+        height: 8px;
+        border-radius: 999px;
+        background: #1f1100;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+        border-radius: inherit;
+        transition: width 800ms ease;
+      }
+      .progress.indeterminate .progress-fill {
+        width: 35%;
+        animation: slide 1.4s ease-in-out infinite;
+      }
+      @keyframes slide {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(300%);
+        }
+      }
+      .progress button {
+        min-height: 44px;
+        font-size: 14px;
+        align-self: flex-start;
       }
 
       /* Saved dreams ----------------------------------------------------------- */
@@ -303,6 +475,11 @@
         margin-bottom: 12px;
         filter: brightness(0.82) sepia(0.15);
       }
+      .entry-badges {
+        font-size: 13px;
+        color: var(--amber-dim);
+        margin: -4px 0 10px;
+      }
       .entry-actions {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -315,50 +492,6 @@
       .btn-delete.confirm {
         border-color: var(--danger);
         color: var(--danger);
-      }
-
-      /* Settings --------------------------------------------------------------- */
-      details {
-        border: 1px solid var(--line);
-        border-radius: 20px;
-        background: var(--surface);
-      }
-      summary {
-        min-height: var(--tap);
-        padding: 0 16px;
-        display: flex;
-        align-items: center;
-        font-weight: 700;
-        color: var(--amber-hi);
-        cursor: pointer;
-        list-style: none;
-      }
-      summary::-webkit-details-marker {
-        display: none;
-      }
-      summary::after {
-        content: "\25BE";
-        margin-left: auto;
-        color: var(--amber-dim);
-        transition: transform 200ms;
-      }
-      details[open] summary::after {
-        transform: rotate(180deg);
-      }
-      .settings-body {
-        padding: 0 16px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      label {
-        font-size: 14px;
-        color: var(--amber-dim);
-      }
-      .hint {
-        font-size: 13px;
-        color: var(--amber-dim);
-        margin: 0;
       }
 
       /* Toast ------------------------------------------------------------------ */
@@ -388,6 +521,12 @@
         transform: translate(-50%, 0);
       }
 
+      @media (prefers-reduced-motion: reduce) {
+        .rec-dot,
+        .progress.indeterminate .progress-fill {
+          animation: none;
+        }
+      }
       .sr-only {
         position: absolute;
         width: 1px;
@@ -411,7 +550,7 @@
         type="button"
         aria-pressed="false"
       >
-        <span id="dictateLabel">🎤 TAP TO DICTATE DREAM</span>
+        <span>🎤 TAP TO DICTATE DREAM</span>
       </button>
       <div class="interim" id="interim" aria-live="polite"></div>
 
@@ -421,62 +560,211 @@
           <span class="saved-flag" id="savedFlag" aria-live="polite"></span>
         </div>
         <div class="meta" id="dreamMeta"></div>
-        <label for="dreamText" class="sr-only">Dream log</label>
+        <label for="dreamText" class="sr-only">Dream transcript</label>
         <textarea
           id="dreamText"
           placeholder="Your dream lands here, word by word. Mumble freely: everything saves automatically."
           spellcheck="false"
         ></textarea>
 
+        <!-- Scene & Cast director -->
+        <details id="director">
+          <summary>🎨 Edit Scene &amp; Cast</summary>
+          <div class="drawer-body">
+            <span class="field-label" id="castLabel">Lead character</span>
+            <div
+              class="pills"
+              role="radiogroup"
+              aria-labelledby="castLabel"
+              id="castPills"
+            >
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="man"
+              >
+                Man
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="woman"
+              >
+                Woman
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="nonbinary"
+              >
+                Non-binary
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="pov"
+              >
+                Abstract / First-Person POV
+              </button>
+            </div>
+            <label for="appearance">Clothing / appearance</label>
+            <input
+              id="appearance"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="wearing a dark trench coat"
+            />
+
+            <label for="sceneLeft">To my left…</label>
+            <input
+              id="sceneLeft"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="a glowing river"
+            />
+            <label for="sceneRight">To my right / background…</label>
+            <input
+              id="sceneRight"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="a dense misty forest"
+            />
+
+            <label for="visualStyle">Visual style</label>
+            <select id="visualStyle">
+              <option value="cinematic">Cinematic Film</option>
+              <option value="surreal">Surreal Dreamscape</option>
+              <option value="anime">Anime / Studio Ghibli</option>
+              <option value="noir">Noir Black &amp; White</option>
+            </select>
+
+            <label for="masterPrompt">Master Director Prompt</label>
+            <textarea
+              id="masterPrompt"
+              spellcheck="false"
+              placeholder="Builds itself from your dream and the choices above."
+            ></textarea>
+            <div class="prompt-status">
+              <span class="hint" id="promptStatus"
+                >Auto-built from your dream.</span
+              >
+              <button type="button" id="rebuildPromptBtn" hidden>
+                ↺ Rebuild
+              </button>
+            </div>
+          </div>
+        </details>
+
         <div class="row">
           <button type="button" id="readBtn">🔊 Read Back</button>
           <button type="button" id="newBtn">🌙 New Dream</button>
-          <button type="button" id="visualizeBtn" class="wide">
-            🎬 Visualize Dream Frame
+        </div>
+
+        <div class="gen-buttons">
+          <button type="button" id="frameBtn">
+            🖼️ Generate Storyboard Frame
+          </button>
+          <button type="button" id="videoBtn">
+            🎬 Generate 5s Dream Video
           </button>
         </div>
-        <div class="frame-area" id="frameArea" aria-live="polite"></div>
+
+        <div
+          class="progress"
+          id="progress"
+          hidden
+          role="status"
+          aria-live="polite"
+        >
+          <span class="progress-label" id="progressLabel"></span>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <button type="button" id="cancelVideoBtn" hidden>Cancel video</button>
+        </div>
+        <div class="output" id="frameArea" aria-live="polite"></div>
+        <div class="output" id="videoArea" aria-live="polite"></div>
       </section>
 
-      <section
-        aria-labelledby="savedHeading"
-        style="display: flex; flex-direction: column; gap: 12px"
-      >
+      <section aria-labelledby="savedHeading" class="stack">
         <h2 id="savedHeading">Saved Dreams</h2>
         <div class="list" id="dreamList"></div>
       </section>
 
       <details id="settings">
         <summary>⚙️ Settings</summary>
-        <div class="settings-body">
-          <label for="apiKey"
-            >OpenAI API key (optional, for dream frames)</label
-          >
+        <div class="drawer-body">
+          <p class="subhead">fal.ai (frames + videos)</p>
+          <label for="falKey">fal.ai API key</label>
           <input
-            id="apiKey"
+            id="falKey"
+            type="password"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="KEY_ID:KEY_SECRET"
+          />
+          <label for="falImageModel">Frame model</label>
+          <input
+            id="falImageModel"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="fal-ai/flux/schnell"
+          />
+          <label for="falVideoModel">Video model</label>
+          <input
+            id="falVideoModel"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="fal-ai/luma-dream-machine/ray-2"
+          />
+
+          <p class="subhead">OpenAI (optional backup for frames)</p>
+          <label for="openaiKey">OpenAI API key</label>
+          <input
+            id="openaiKey"
             type="password"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
             placeholder="sk-…"
           />
-          <label for="imageModel">Image model</label>
+          <label for="openaiModel">OpenAI image model</label>
           <input
-            id="imageModel"
+            id="openaiModel"
             type="text"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
             placeholder="gpt-image-2"
           />
+
+          <button type="button" id="saveSettingsBtn">Save</button>
           <div class="row">
-            <button type="button" id="saveKeyBtn">Save</button>
-            <button type="button" id="clearKeyBtn">Clear Key</button>
+            <button type="button" id="clearFalBtn">Clear fal Key</button>
+            <button type="button" id="clearOpenaiBtn">Clear OpenAI Key</button>
           </div>
           <p class="hint" id="keyStatus"></p>
           <p class="hint">
-            Your key stays in this browser's local storage on this phone and is
-            sent only to OpenAI. Each frame is billed to your OpenAI account.
+            Keys stay in this browser's storage on this phone and are sent only
+            to fal.ai or OpenAI. Frames and videos are billed to your own
+            accounts. Frames use fal.ai when a fal key is saved, otherwise
+            OpenAI.
           </p>
         </div>
       </details>
@@ -495,17 +783,46 @@
         const STORAGE = {
           dreams: "mdc.dreams.v1",
           current: "mdc.currentId.v1",
-          apiKey: "mdc.openaiKey.v1",
-          model: "mdc.imageModel.v1",
+          apiKey: "mdc.openaiKey.v1", // OpenAI (kept from v1 for continuity)
+          model: "mdc.imageModel.v1", // OpenAI image model
+          falKey: "mdc.falKey.v1",
+          falImageModel: "mdc.falImageModel.v1",
+          falVideoModel: "mdc.falVideoModel.v1",
         };
-        const DEFAULT_IMAGE_MODEL = "gpt-image-2"; // dall-e-3 was retired on 2026-05-12
-        const IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
-        const IMAGE_SIZE = "1536x1024"; // landscape, storyboard-shaped
+
+        const FAL_SYNC_BASE = "https://fal.run/";
+        const FAL_QUEUE_BASE = "https://queue.fal.run/";
+        const DEFAULT_FAL_IMAGE_MODEL = "fal-ai/flux/schnell";
+        const DEFAULT_FAL_VIDEO_MODEL = "fal-ai/luma-dream-machine/ray-2";
+        const VIDEO_POLL_MS = 3000;
+        const VIDEO_MAX_WAIT_MS = 15 * 60 * 1000;
+        const VIDEO_TYPICAL_MS = 90 * 1000; // shapes the progress bar curve
+        const PENDING_RESUME_MAX_AGE_MS = 60 * 60 * 1000;
+
+        const OPENAI_ENDPOINT = "https://api.openai.com/v1/images/generations";
+        const DEFAULT_OPENAI_MODEL = "gpt-image-2"; // dall-e-3 was retired on 2026-05-12
+
         const IMAGE_TIMEOUT_MS = 120000;
-        const PROMPT_MAX_CHARS = 3500;
+        const TRANSCRIPT_PROMPT_CHARS = 1200;
         const SAVE_DEBOUNCE_MS = 400;
         const THUMB_MAX_WIDTH = 768; // stored frames are downscaled JPEGs to fit localStorage
         const MAX_RESTARTS_PER_10S = 6;
+
+        const CHARACTER_LINES = {
+          man: "The lead character is a man",
+          woman: "The lead character is a woman",
+          nonbinary: "The lead character is a non-binary person",
+          pov: "Seen from an abstract first-person point of view; the dreamer is never shown",
+        };
+        const STYLE_LINES = {
+          cinematic:
+            "Cinematic film storyboard still, anamorphic lens, dramatic low-key lighting, shallow depth of field",
+          surreal:
+            "Surreal dreamscape, impossible geometry, soft ethereal glow, painterly textures",
+          anime:
+            "Hand-painted Japanese animation film style, lush watercolor backgrounds, gentle warm light",
+          noir: "Black and white film noir, high-contrast chiaroscuro lighting, deep shadows, grainy film",
+        };
 
         // =========================================================================
         // Helpers
@@ -515,20 +832,38 @@
         const els = {
           clock: $("clock"),
           dictateBtn: $("dictateBtn"),
-          dictateLabel: $("dictateLabel"),
           interim: $("interim"),
           savedFlag: $("savedFlag"),
           dreamMeta: $("dreamMeta"),
           dreamText: $("dreamText"),
+          director: $("director"),
+          castPills: $("castPills"),
+          appearance: $("appearance"),
+          sceneLeft: $("sceneLeft"),
+          sceneRight: $("sceneRight"),
+          visualStyle: $("visualStyle"),
+          masterPrompt: $("masterPrompt"),
+          promptStatus: $("promptStatus"),
+          rebuildPromptBtn: $("rebuildPromptBtn"),
           readBtn: $("readBtn"),
           newBtn: $("newBtn"),
-          visualizeBtn: $("visualizeBtn"),
+          frameBtn: $("frameBtn"),
+          videoBtn: $("videoBtn"),
+          progress: $("progress"),
+          progressLabel: $("progressLabel"),
+          progressFill: $("progressFill"),
+          cancelVideoBtn: $("cancelVideoBtn"),
           frameArea: $("frameArea"),
+          videoArea: $("videoArea"),
           dreamList: $("dreamList"),
-          apiKey: $("apiKey"),
-          imageModel: $("imageModel"),
-          saveKeyBtn: $("saveKeyBtn"),
-          clearKeyBtn: $("clearKeyBtn"),
+          falKey: $("falKey"),
+          falImageModel: $("falImageModel"),
+          falVideoModel: $("falVideoModel"),
+          openaiKey: $("openaiKey"),
+          openaiModel: $("openaiModel"),
+          saveSettingsBtn: $("saveSettingsBtn"),
+          clearFalBtn: $("clearFalBtn"),
+          clearOpenaiBtn: $("clearOpenaiBtn"),
           keyStatus: $("keyStatus"),
           toast: $("toast"),
         };
@@ -541,13 +876,14 @@
         }
 
         let toastTimer = null;
-        function toast(message, ms = 2600) {
+        function toast(message, ms = 2800) {
           els.toast.textContent = message;
           els.toast.classList.add("show");
           clearTimeout(toastTimer);
           toastTimer = setTimeout(() => els.toast.classList.remove("show"), ms);
         }
 
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const dateFmt = new Intl.DateTimeFormat(undefined, {
           weekday: "short",
           day: "numeric",
@@ -560,6 +896,10 @@
           minute: "2-digit",
         });
         const formatStamp = (ms) => dateFmt.format(new Date(ms));
+        const formatElapsed = (ms) => {
+          const s = Math.floor(ms / 1000);
+          return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+        };
 
         function readStore(key, fallback) {
           try {
@@ -577,6 +917,14 @@
             return true;
           } catch {
             return false;
+          }
+        }
+
+        function removeStore(key) {
+          try {
+            localStorage.removeItem(key);
+          } catch {
+            /* ignore */
           }
         }
 
@@ -602,11 +950,41 @@
           }
         }
 
+        /** An Error whose message is already safe to show the user. */
+        const userError = (message) =>
+          Object.assign(new Error(message), { handled: true });
+
+        // Keep the screen on while dictating or waiting on a render.
+        const wake = { lock: null, reasons: new Set() };
+        async function holdWake(reason) {
+          wake.reasons.add(reason);
+          if (wake.lock || !("wakeLock" in navigator)) return;
+          try {
+            wake.lock = await navigator.wakeLock.request("screen");
+          } catch {
+            wake.lock = null;
+          }
+        }
+        function releaseWake(reason) {
+          wake.reasons.delete(reason);
+          if (wake.reasons.size === 0 && wake.lock) {
+            wake.lock.release().catch(() => {});
+            wake.lock = null;
+          }
+        }
+
         // =========================================================================
         // Dream store (localStorage)
         // =========================================================================
 
-        /** @type {{id:string, createdAt:number, updatedAt:number, text:string, image?:string}[]} */
+        /**
+         * @typedef {{character:string, appearance:string, left:string, right:string, style:string, prompt:string, promptEdited:boolean}} Director
+         * @typedef {{id:string, createdAt:number, updatedAt:number, text:string, image?:string,
+         *   video?:{url:string, createdAt:number}, director?:Director,
+         *   pendingVideo?:{statusUrl:string, responseUrl:string, cancelUrl:string, startedAt:number}}} Dream
+         */
+
+        /** @type {Dream[]} */
         let dreams = readStore(STORAGE.dreams, []);
         if (!Array.isArray(dreams)) dreams = [];
         let currentId = readStore(STORAGE.current, null);
@@ -616,6 +994,7 @@
           `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         const currentDream = () =>
           dreams.find((d) => d.id === currentId) || null;
+        const findDream = (id) => dreams.find((d) => d.id === id) || null;
 
         function persistDreams() {
           const ok =
@@ -629,7 +1008,6 @@
           return ok;
         }
 
-        /** Creates the current entry lazily, on the first word. */
         function ensureCurrentDream() {
           let dream = currentDream();
           if (!dream) {
@@ -650,13 +1028,22 @@
         function saveNow() {
           clearTimeout(saveTimer);
           saveTimer = null;
+          refreshPrompt();
+
           const text = els.dreamText.value;
           const existing = currentDream();
-          if (!existing && !text.trim()) return;
+          if (!existing && !text.trim() && directorIsBlank(director)) return;
 
           const dream = ensureCurrentDream();
-          if (dream.text === text) return;
+          const directorJson = JSON.stringify(director);
+          if (
+            dream.text === text &&
+            JSON.stringify(dream.director || null) === directorJson
+          )
+            return;
+
           dream.text = text;
+          dream.director = JSON.parse(directorJson);
           dream.updatedAt = Date.now();
           if (persistDreams()) flashSaved();
           renderMeta();
@@ -674,47 +1061,169 @@
           );
         }
 
+        function isEmptyDream(d) {
+          return (
+            !d.text.trim() &&
+            !d.image &&
+            !d.video &&
+            !d.pendingVideo &&
+            directorIsBlank(d.director || blankDirector())
+          );
+        }
+
+        function loadIntoEditor(dream) {
+          els.dreamText.value = dream ? dream.text : "";
+          director = { ...blankDirector(), ...(dream?.director || {}) };
+          renderDirector();
+          renderOutputs();
+          renderMeta();
+          renderList();
+        }
+
         function startNewDream() {
           saveNow();
           const dream = currentDream();
-          if (dream && !dream.text.trim())
+          if (dream && isEmptyDream(dream))
             dreams = dreams.filter((d) => d.id !== dream.id);
           currentId = null;
           persistDreams();
-          els.dreamText.value = "";
-          els.frameArea.replaceChildren();
           els.savedFlag.textContent = "";
-          renderMeta();
-          renderList();
+          els.director.open = false;
+          loadIntoEditor(null);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         function openDream(id) {
           saveNow();
-          const dream = dreams.find((d) => d.id === id);
+          const dream = findDream(id);
           if (!dream) return;
           currentId = id;
           persistDreams();
-          els.dreamText.value = dream.text;
-          showStoredFrame(dream);
-          renderMeta();
-          renderList();
+          loadIntoEditor(dream);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         function deleteDream(id) {
+          if (videoJob?.dreamId === id) cancelVideo(true);
           dreams = dreams.filter((d) => d.id !== id);
           sessionImages.delete(id);
+          persistDreams();
           if (id === currentId) {
             currentId = null;
-            els.dreamText.value = "";
-            els.frameArea.replaceChildren();
+            persistDreams();
             els.savedFlag.textContent = "";
+            loadIntoEditor(null);
+          } else {
+            renderList();
           }
-          persistDreams();
-          renderMeta();
-          renderList();
         }
+
+        // =========================================================================
+        // Scene & Cast director
+        // =========================================================================
+
+        const blankDirector = () => ({
+          character: "",
+          appearance: "",
+          left: "",
+          right: "",
+          style: "cinematic",
+          prompt: "",
+          promptEdited: false,
+        });
+        /** @type {Director} */
+        let director = blankDirector();
+
+        function directorIsBlank(d) {
+          return (
+            !d.character &&
+            !d.appearance &&
+            !d.left &&
+            !d.right &&
+            d.style === "cinematic" &&
+            !d.promptEdited
+          );
+        }
+
+        const sentence = (s) => {
+          const t = s.trim().replace(/\s+/g, " ");
+          return t ? (/[.!?]$/.test(t) ? t : `${t}.`) : "";
+        };
+
+        /** [Style] + [Dream transcript] + [Character] + [Left / Right scenery]. */
+        function composePrompt() {
+          const transcript = els.dreamText.value.trim().replace(/\s+/g, " ");
+          const clipped =
+            transcript.length > TRANSCRIPT_PROMPT_CHARS
+              ? `${transcript.slice(0, TRANSCRIPT_PROMPT_CHARS).replace(/\s+\S*$/, "")}…`
+              : transcript;
+
+          const parts = [
+            sentence(STYLE_LINES[director.style] || STYLE_LINES.cinematic),
+          ];
+          if (clipped) parts.push(`Dream: ${sentence(clipped)}`);
+
+          if (director.character || director.appearance) {
+            const base =
+              CHARACTER_LINES[director.character] || "The lead character";
+            const look = director.appearance.trim();
+            parts.push(sentence(look ? `${base}, ${look}` : base));
+          }
+          if (director.left.trim())
+            parts.push(sentence(`To the left: ${director.left}`));
+          if (director.right.trim())
+            parts.push(
+              sentence(`To the right and in the background: ${director.right}`),
+            );
+          parts.push("One coherent dreamlike scene.");
+          return parts.join(" ");
+        }
+
+        /** Rebuilds the prompt live unless the user has hand-edited it. */
+        function refreshPrompt() {
+          if (director.promptEdited) return;
+          director.prompt = composePrompt();
+          if (els.masterPrompt.value !== director.prompt)
+            els.masterPrompt.value = director.prompt;
+        }
+
+        function renderPromptStatus() {
+          els.promptStatus.textContent = director.promptEdited
+            ? "Edited by you. Changes above won’t overwrite it."
+            : "Auto-built from your dream.";
+          els.rebuildPromptBtn.hidden = !director.promptEdited;
+        }
+
+        function renderDirector() {
+          for (const pill of els.castPills.querySelectorAll(".pill")) {
+            pill.setAttribute(
+              "aria-checked",
+              String(pill.dataset.character === director.character),
+            );
+          }
+          els.appearance.value = director.appearance;
+          els.sceneLeft.value = director.left;
+          els.sceneRight.value = director.right;
+          els.visualStyle.value = STYLE_LINES[director.style]
+            ? director.style
+            : "cinematic";
+          if (director.promptEdited) els.masterPrompt.value = director.prompt;
+          refreshPrompt();
+          renderPromptStatus();
+        }
+
+        function onDirectorChange() {
+          refreshPrompt();
+          scheduleSave();
+        }
+
+        function promptForGeneration() {
+          refreshPrompt();
+          return (director.prompt || composePrompt()).trim();
+        }
+
+        const hasDreamContent = () =>
+          Boolean(els.dreamText.value.trim()) || director.promptEdited;
 
         // =========================================================================
         // Rendering
@@ -729,7 +1238,7 @@
 
         function renderList() {
           els.dreamList.replaceChildren();
-          const saved = dreams.filter((d) => d.text.trim() || d.image);
+          const saved = dreams.filter((d) => !isEmptyDream(d));
           if (saved.length === 0) {
             els.dreamList.append(
               el(
@@ -746,20 +1255,23 @@
               "article",
               dream.id === currentId ? "entry current" : "entry",
             );
-            const stamp = el(
-              "div",
-              "meta",
-              `${formatStamp(dream.createdAt)}${dream.id === currentId ? " · open above" : ""}`,
+            item.append(
+              el(
+                "div",
+                "meta",
+                `${formatStamp(dream.createdAt)}${dream.id === currentId ? " · open above" : ""}`,
+              ),
             );
+
             const text = el(
               "div",
               "entry-text",
-              dream.text.trim() || "(frame only)",
+              dream.text.trim() || "(no transcript)",
             );
             text.addEventListener("click", () =>
               text.classList.toggle("expanded"),
             );
-            item.append(stamp, text);
+            item.append(text);
 
             const image = sessionImages.get(dream.id) || dream.image;
             if (image) {
@@ -769,6 +1281,11 @@
               img.loading = "lazy";
               item.append(img);
             }
+            const badges = [];
+            if (dream.video) badges.push("🎬 Dream video");
+            if (dream.pendingVideo) badges.push("⏳ Video rendering");
+            if (badges.length)
+              item.append(el("div", "entry-badges", badges.join(" · ")));
 
             const actions = el("div", "entry-actions");
             const open = el("button", "", "Open");
@@ -813,6 +1330,24 @@
           }
         }
 
+        /** Frame + video + progress for whichever dream is open. */
+        function renderOutputs() {
+          const dream = currentDream();
+          els.frameArea.replaceChildren();
+          els.videoArea.replaceChildren();
+
+          const image = dream && (sessionImages.get(dream.id) || dream.image);
+          if (image) renderFrame(image);
+          if (dream?.video?.url) renderVideo(dream.video.url);
+
+          const jobHere = videoJob && videoJob.dreamId === currentId;
+          els.progress.hidden = !(
+            jobHere ||
+            (frameJob?.dreamId === currentId && frameJob)
+          );
+          els.cancelVideoBtn.hidden = !jobHere;
+        }
+
         function tickClock() {
           els.clock.textContent = clockFmt.format(new Date());
         }
@@ -833,7 +1368,6 @@
           "language-not-supported":
             "Dictation does not support your phone language.",
         };
-
         const voice = {
           recognition: null,
           listening: false,
@@ -841,23 +1375,19 @@
           interim: "",
           restarts: [],
         };
-        let wakeLock = null;
 
         function setDictateUI(on) {
           els.dictateBtn.classList.toggle("listening", on);
           els.dictateBtn.setAttribute("aria-pressed", String(on));
           els.dictateBtn.replaceChildren();
-          if (on) {
+          if (on)
             els.dictateBtn.append(
               el("span", "rec-dot"),
               el("span", "", "LISTENING… TAP TO STOP"),
             );
-          } else {
-            els.dictateBtn.append(el("span", "", "🎤 TAP TO DICTATE DREAM"));
-          }
+          else els.dictateBtn.append(el("span", "", "🎤 TAP TO DICTATE DREAM"));
         }
 
-        /** Appends words to the log and saves immediately. */
         function commitWords(raw) {
           let words = String(raw).replace(/\s+/g, " ").trim();
           if (!words) return;
@@ -876,20 +1406,6 @@
           if (voice.interim) commitWords(voice.interim);
           voice.interim = "";
           els.interim.textContent = "";
-        }
-
-        async function acquireWakeLock() {
-          try {
-            if ("wakeLock" in navigator)
-              wakeLock = await navigator.wakeLock.request("screen");
-          } catch {
-            wakeLock = null; // not critical
-          }
-        }
-
-        function releaseWakeLock() {
-          wakeLock?.release().catch(() => {});
-          wakeLock = null;
         }
 
         function startDictation() {
@@ -965,13 +1481,12 @@
             return;
           }
           setDictateUI(true);
-          acquireWakeLock();
+          holdWake("dictation");
         }
 
         function stopDictation() {
           voice.listening = false;
-          if (voice.recognition)
-            voice.recognition.stop(); // onend commits + finishes
+          if (voice.recognition) voice.recognition.stop();
           else finishDictation();
         }
 
@@ -980,7 +1495,7 @@
           voice.recognition = null;
           voice.listening = false;
           setDictateUI(false);
-          releaseWakeLock();
+          releaseWake("dictation");
         }
 
         // =========================================================================
@@ -997,9 +1512,8 @@
               .match(/[^.!?]+[.!?]*\s*/g) || [];
           const chunks = [];
           let current = "";
-          for (const sentence of sentences) {
-            const pieces =
-              sentence.length > max ? sentence.split(/(?<=\s)/) : [sentence];
+          for (const s of sentences) {
+            const pieces = s.length > max ? s.split(/(?<=\s)/) : [s];
             for (const piece of pieces) {
               if ((current + piece).length > max && current) {
                 chunks.push(current.trim());
@@ -1041,13 +1555,12 @@
           chunks.forEach((chunk, i) => {
             const u = new SpeechSynthesisUtterance(chunk);
             u.lang = navigator.language || "en-US";
-            u.rate = 0.92; // a little slower for a sleepy brain
-            u.volume = 0.8; // gentler at night
-            if (i === chunks.length - 1) {
+            u.rate = 0.92;
+            u.volume = 0.8;
+            if (i === chunks.length - 1)
               u.onend = () => {
                 if (session === reader.session) finishReading();
               };
-            }
             u.onerror = (e) => {
               if (session !== reader.session) return;
               if (e.error !== "interrupted" && e.error !== "canceled")
@@ -1073,101 +1586,151 @@
         // Settings
         // =========================================================================
 
-        const getApiKey = () => readStore(STORAGE.apiKey, "") || "";
-        const getModel = () =>
-          readStore(STORAGE.model, "") || DEFAULT_IMAGE_MODEL;
+        /** Accepts "KEY_ID:KEY_SECRET" or a pasted "Key KEY_ID:KEY_SECRET". */
+        const normaliseFalKey = (raw) =>
+          String(raw || "")
+            .trim()
+            .replace(/^Key\s+/i, "");
+
+        const getFalKey = () => readStore(STORAGE.falKey, "") || "";
+        const getFalImageModel = () =>
+          readStore(STORAGE.falImageModel, "") || DEFAULT_FAL_IMAGE_MODEL;
+        const getFalVideoModel = () =>
+          readStore(STORAGE.falVideoModel, "") || DEFAULT_FAL_VIDEO_MODEL;
+        const getOpenaiKey = () => readStore(STORAGE.apiKey, "") || "";
+        const getOpenaiModel = () =>
+          readStore(STORAGE.model, "") || DEFAULT_OPENAI_MODEL;
+        const mask = (key) => `••••${key.slice(-4)}`;
 
         function renderKeyStatus() {
-          const key = getApiKey();
-          els.keyStatus.textContent = key
-            ? `Key saved (••••${key.slice(-4)}). Model: ${getModel()}.`
-            : "No key saved. Dreams still save; frames need a key.";
-          els.apiKey.value = "";
-          els.imageModel.value = readStore(STORAGE.model, "") || "";
+          const fal = getFalKey();
+          const oa = getOpenaiKey();
+          const lines = [
+            fal
+              ? `fal.ai key saved (${mask(fal)}).`
+              : "No fal.ai key: videos are off.",
+            oa ? `OpenAI key saved (${mask(oa)}).` : "",
+          ].filter(Boolean);
+          els.keyStatus.textContent = lines.join(" ");
+          els.falKey.value = "";
+          els.openaiKey.value = "";
+          els.falImageModel.value = readStore(STORAGE.falImageModel, "") || "";
+          els.falVideoModel.value = readStore(STORAGE.falVideoModel, "") || "";
+          els.openaiModel.value = readStore(STORAGE.model, "") || "";
         }
 
         function saveSettings() {
-          const key = els.apiKey.value.trim();
-          const model = els.imageModel.value.trim();
-          if (key && /\s/.test(key)) {
-            toast("That key has spaces in it. Paste it again.");
+          const fal = normaliseFalKey(els.falKey.value);
+          const oa = els.openaiKey.value.trim();
+          if (fal && (/\s/.test(fal) || !fal.includes(":"))) {
+            toast(
+              "fal.ai keys look like KEY_ID:KEY_SECRET. Paste it again.",
+              4000,
+            );
             return;
           }
-          if (key) writeStore(STORAGE.apiKey, key);
-          writeStore(STORAGE.model, model);
-          renderKeyStatus();
-          toast(key ? "Key saved on this phone." : "Settings saved.");
-        }
-
-        function clearKey() {
-          try {
-            localStorage.removeItem(STORAGE.apiKey);
-          } catch {
-            /* ignore */
+          if (oa && /\s/.test(oa)) {
+            toast("That OpenAI key has spaces in it. Paste it again.");
+            return;
           }
+          if (fal) writeStore(STORAGE.falKey, fal);
+          if (oa) writeStore(STORAGE.apiKey, oa);
+          writeStore(STORAGE.falImageModel, els.falImageModel.value.trim());
+          writeStore(STORAGE.falVideoModel, els.falVideoModel.value.trim());
+          writeStore(STORAGE.model, els.openaiModel.value.trim());
           renderKeyStatus();
-          toast("Key cleared.");
+          toast(fal || oa ? "Keys saved on this phone." : "Settings saved.");
         }
 
         // =========================================================================
-        // Storyboard frame (OpenAI Images API)
+        // Generation: shared
         // =========================================================================
 
-        let frameRequest = 0;
+        let frameJob = null; // { dreamId }
+        let videoJob = null; // { dreamId, cancelled, cancelUrl }
 
-        function frameNotice(children) {
+        function showProgress({ label, fraction = null, cancellable = false }) {
+          els.progress.hidden = false;
+          els.progress.classList.toggle("indeterminate", fraction == null);
+          els.progressLabel.textContent = label;
+          els.progressFill.style.width =
+            fraction == null ? "" : `${Math.round(fraction * 100)}%`;
+          els.cancelVideoBtn.hidden = !cancellable;
+        }
+
+        function hideProgress() {
+          els.progress.hidden = true;
+          els.progressFill.style.width = "0%";
+        }
+
+        function notice(area, children) {
           const box = el("div", "notice");
           box.append(...children);
-          els.frameArea.replaceChildren(box);
+          area.replaceChildren(box);
           return box;
         }
 
-        function showStoredFrame(dream) {
-          const image = sessionImages.get(dream.id) || dream.image;
-          if (!image) {
-            els.frameArea.replaceChildren();
-            return;
-          }
-          renderFrame(image);
-        }
-
-        function renderFrame(src) {
-          const img = el("img");
-          img.src = src;
-          img.alt = "Cinematic storyboard frame of your dream";
-          els.frameArea.replaceChildren(img);
-        }
-
-        function noKeyNotice(text) {
-          const strong = el(
-            "strong",
-            "",
-            "Add an OpenAI API key in ⚙️ Settings",
-          );
-          const copy = el("button", "", "Copy Dream Text");
+        function noKeyNotice(area, prompt, message) {
+          const copy = el("button", "", "Copy Director Prompt");
           copy.type = "button";
           copy.style.width = "100%";
           copy.style.marginTop = "12px";
           copy.addEventListener("click", async () => {
-            const ok = await copyText(
-              `Cinematic film storyboard still of this dream: ${text}`,
-            );
+            const ok = await copyText(prompt);
             toast(
-              ok
-                ? "Copied as an image prompt."
-                : "Copy blocked. Press and hold to copy.",
+              ok ? "Prompt copied." : "Copy blocked. Press and hold to copy.",
             );
           });
-          frameNotice([
-            strong,
+          notice(area, [
+            el("strong", "", message),
             document.createTextNode(
-              " to turn this dream into a storyboard frame, or copy it as a prompt to use in any image app.",
+              " Or copy your Master Director Prompt to use in any image or video app.",
             ),
             copy,
           ]);
         }
 
-        /** Downscale to a JPEG so frames fit comfortably in localStorage. */
+        async function readFalError(response) {
+          try {
+            const json = await response.json();
+            const detail =
+              json?.detail ?? json?.error?.message ?? json?.message;
+            if (Array.isArray(detail))
+              return detail.map((d) => d?.msg || JSON.stringify(d)).join("; ");
+            return typeof detail === "string" ? detail : "";
+          } catch {
+            return "";
+          }
+        }
+
+        function friendlyFalError(status, detail, model) {
+          if (status === 401)
+            return "fal.ai rejected the key. Check it in ⚙️ Settings (format KEY_ID:KEY_SECRET).";
+          if (status === 403)
+            return detail
+              ? `fal.ai refused the request: ${detail}`
+              : "fal.ai refused the request. Your balance may be empty.";
+          if (status === 404)
+            return `fal.ai can't find the model "${model}". Check the model name in ⚙️ Settings.`;
+          if (status === 422)
+            return detail
+              ? `fal.ai rejected the request: ${detail}`
+              : "fal.ai rejected the request.";
+          if (status === 429)
+            return "fal.ai is rate-limiting this key. Try again in a minute.";
+          if (status >= 500)
+            return "fal.ai is having trouble right now. Try again shortly.";
+          return detail
+            ? `fal.ai: ${detail}`
+            : `fal.ai returned an error (${status}).`;
+        }
+
+        const falHeaders = (key) => ({
+          Authorization: `Key ${key}`,
+          "Content-Type": "application/json",
+        });
+
+        /** Downscale to a JPEG so frames fit in localStorage; null if not possible. */
         function compressImage(src) {
           return new Promise((resolve) => {
             const img = new Image();
@@ -1182,7 +1745,7 @@
               try {
                 resolve(canvas.toDataURL("image/jpeg", 0.78));
               } catch {
-                resolve(null); // tainted canvas (remote URL without CORS)
+                resolve(null);
               }
             };
             img.onerror = () => resolve(null);
@@ -1191,143 +1754,516 @@
           });
         }
 
-        async function requestImage(apiKey, body, signal) {
-          return fetch(IMAGE_ENDPOINT, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(body),
-            signal,
+        // =========================================================================
+        // Generation: storyboard frame (fal.ai, OpenAI as backup)
+        // =========================================================================
+
+        function renderFrame(src) {
+          const img = el("img");
+          img.src = src;
+          img.alt = "Storyboard frame of your dream";
+          els.frameArea.replaceChildren(img);
+        }
+
+        async function falImage(key, prompt, signal) {
+          const model = getFalImageModel();
+          const url = FAL_SYNC_BASE + model;
+          const send = (body) =>
+            fetch(url, {
+              method: "POST",
+              headers: falHeaders(key),
+              body: JSON.stringify(body),
+              signal,
+            });
+
+          let response = await send({
+            prompt,
+            image_size: "landscape_16_9",
+            num_images: 1,
           });
+          if (response.status === 422) response = await send({ prompt }); // model with a different input schema
+          if (!response.ok)
+            throw userError(
+              friendlyFalError(
+                response.status,
+                await readFalError(response),
+                model,
+              ),
+            );
+
+          const json = await response.json();
+          const src = json?.images?.[0]?.url || json?.image?.url;
+          if (!src) throw userError("fal.ai returned no image.");
+          return src;
         }
 
-        async function readApiError(response) {
-          try {
-            const json = await response.json();
-            return json?.error?.message || "";
-          } catch {
-            return "";
+        async function openaiImage(key, prompt, signal) {
+          const body = {
+            model: getOpenaiModel(),
+            prompt,
+            size: "1536x1024",
+            n: 1,
+          };
+          const send = () =>
+            fetch(OPENAI_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${key}`,
+              },
+              body: JSON.stringify(body),
+              signal,
+            });
+          let response = await send();
+          if (response.status === 400) {
+            const msg = await readFalError(response);
+            if (!/size/i.test(msg))
+              throw userError(
+                msg ? `OpenAI: ${msg}` : "OpenAI rejected the request.",
+              );
+            delete body.size;
+            response = await send();
           }
+          if (response.status === 401)
+            throw userError(
+              "OpenAI rejected the API key. Check it in ⚙️ Settings.",
+            );
+          if (response.status === 429)
+            throw userError("OpenAI rate or credit limit reached.");
+          if (!response.ok) {
+            const msg = await readFalError(response);
+            throw userError(
+              msg
+                ? `OpenAI: ${msg}`
+                : `OpenAI returned an error (${response.status}).`,
+            );
+          }
+          const json = await response.json();
+          const item = json?.data?.[0];
+          const src = item?.b64_json
+            ? `data:image/png;base64,${item.b64_json}`
+            : item?.url;
+          if (!src) throw userError("OpenAI returned no image.");
+          return src;
         }
 
-        function friendlyImageError(status, apiMessage) {
-          if (status === 401)
-            return "OpenAI rejected the API key. Check it in ⚙️ Settings.";
-          if (status === 403)
-            return "This key is not allowed to use the image model. Your OpenAI organisation may need verification.";
-          if (status === 429)
-            return "OpenAI rate or credit limit reached. Try again later.";
-          if (status >= 500)
-            return "OpenAI is having trouble right now. Try again in a minute.";
-          if (/safety|moderation|policy/i.test(apiMessage))
-            return "OpenAI declined this dream for safety reasons. Try rewording it.";
-          return apiMessage
-            ? `OpenAI: ${apiMessage}`
-            : `OpenAI returned an error (${status}).`;
-        }
-
-        async function visualizeDream() {
+        async function generateFrame() {
           saveNow();
-          const text = els.dreamText.value.trim();
-          if (!text) {
+          if (!hasDreamContent()) {
             toast("Dictate or type a dream first.");
             return;
           }
-
-          const apiKey = getApiKey();
-          if (!apiKey) {
-            noKeyNotice(text);
+          const prompt = promptForGeneration();
+          const falKey = getFalKey();
+          const openaiKey = getOpenaiKey();
+          if (!falKey && !openaiKey) {
+            noKeyNotice(
+              els.frameArea,
+              prompt,
+              "Add a fal.ai key in ⚙️ Settings to generate storyboard frames.",
+            );
             return;
           }
 
           const dream = ensureCurrentDream();
-          const requestId = ++frameRequest;
+          persistDreams();
+          frameJob = { dreamId: dream.id };
+          els.frameBtn.disabled = true;
+          els.frameBtn.textContent = "🖼️ Developing frame…";
+          if (!videoJob || videoJob.dreamId !== currentId)
+            showProgress({ label: "Developing your storyboard frame…" });
+
           const controller = new AbortController();
           const timeout = setTimeout(
             () => controller.abort(),
             IMAGE_TIMEOUT_MS,
           );
-          els.visualizeBtn.disabled = true;
-          els.visualizeBtn.textContent = "🎬 Developing frame…";
-          frameNotice([
-            document.createTextNode(
-              "Developing your storyboard frame. This can take up to a minute.",
-            ),
-          ]);
-
-          const body = {
-            model: getModel(),
-            prompt: `Cinematic film storyboard still of this dream: ${text.slice(0, PROMPT_MAX_CHARS)}`,
-            size: IMAGE_SIZE,
-            n: 1,
-          };
-
           try {
-            let response = await requestImage(apiKey, body, controller.signal);
-            // Some models reject specific sizes: retry once with the model's default.
-            if (response.status === 400) {
-              const message = await readApiError(response);
-              if (/size/i.test(message)) {
-                delete body.size;
-                response = await requestImage(apiKey, body, controller.signal);
-              } else {
-                throw Object.assign(
-                  new Error(friendlyImageError(400, message)),
-                  { handled: true },
-                );
-              }
-            }
-            if (!response.ok) {
-              throw Object.assign(
-                new Error(
-                  friendlyImageError(
-                    response.status,
-                    await readApiError(response),
-                  ),
-                ),
-                { handled: true },
-              );
-            }
+            const src = falKey
+              ? await falImage(falKey, prompt, controller.signal)
+              : await openaiImage(openaiKey, prompt, controller.signal);
 
-            const json = await response.json();
-            const item = json?.data?.[0];
-            const src = item?.b64_json
-              ? `data:image/png;base64,${item.b64_json}`
-              : item?.url;
-            if (!src)
-              throw Object.assign(new Error("OpenAI returned no image."), {
-                handled: true,
-              });
-            if (requestId !== frameRequest) return;
-
-            if (currentId === dream.id) renderFrame(src);
             sessionImages.set(dream.id, src);
-
             const compact = await compressImage(src);
-            if (compact) {
-              dream.image = compact;
-              if (persistDreams()) sessionImages.delete(dream.id);
-              else delete dream.image; // keep shown for this session only
-            }
+            dream.image = compact || src; // fall back to the hosted URL if CORS blocks canvas
+            if (persistDreams()) sessionImages.delete(dream.id);
+            else delete dream.image;
+
+            if (currentId === dream.id)
+              renderFrame(sessionImages.get(dream.id) || dream.image);
             renderList();
             toast("Frame developed.");
           } catch (err) {
-            if (requestId !== frameRequest) return;
             const message = err?.handled
               ? err.message
               : err?.name === "AbortError"
-                ? "The image took too long. Try again."
-                : "Could not reach OpenAI. Check your connection.";
-            frameNotice([document.createTextNode(message)]);
+                ? "The frame took too long. Try again."
+                : "Could not reach the image service. Check your connection.";
+            if (currentId === dream.id)
+              notice(els.frameArea, [document.createTextNode(message)]);
+            else toast(message, 4500);
           } finally {
             clearTimeout(timeout);
-            if (requestId === frameRequest) {
-              els.visualizeBtn.disabled = false;
-              els.visualizeBtn.textContent = "🎬 Visualize Dream Frame";
-            }
+            frameJob = null;
+            els.frameBtn.disabled = false;
+            els.frameBtn.textContent = "🖼️ Generate Storyboard Frame";
+            if (!videoJob || videoJob.dreamId !== currentId) hideProgress();
           }
+        }
+
+        // =========================================================================
+        // Generation: 5s dream video (fal.ai queue + polling)
+        // =========================================================================
+
+        const videoBlobs = new Map(); // url -> Blob, prefetched so Share works instantly
+
+        function renderVideo(url) {
+          const video = el("video");
+          video.src = url;
+          video.controls = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.setAttribute("playsinline", "");
+          video.preload = "metadata";
+          video.addEventListener(
+            "error",
+            () => {
+              notice(els.videoArea, [
+                document.createTextNode(
+                  "This video link has expired or can’t be played. Generate it again, and save it to your phone soon after.",
+                ),
+              ]);
+            },
+            { once: true },
+          );
+
+          const link = el("a", "btn-link", "⬇️ Save / Share Video");
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.download = "dream-video.mp4";
+          link.addEventListener("click", (event) => shareVideo(url, event));
+
+          els.videoArea.replaceChildren(video, link);
+          prefetchVideo(url);
+        }
+
+        function prefetchVideo(url) {
+          if (!navigator.canShare || videoBlobs.has(url)) return;
+          videoBlobs.set(url, null);
+          fetch(url)
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((blob) => {
+              if (blob) videoBlobs.set(url, blob);
+              else videoBlobs.delete(url);
+            })
+            .catch(() => videoBlobs.delete(url));
+        }
+
+        /**
+         * Uses the phone's share sheet (Save Video, Messages, etc.) when the file
+         * is ready; otherwise the link opens the MP4 so it can be saved from there.
+         */
+        function shareVideo(url, event) {
+          const blob = videoBlobs.get(url);
+          if (!blob || !navigator.canShare) return; // default link behaviour
+          const file = new File([blob], "dream-video.mp4", {
+            type: blob.type || "video/mp4",
+          });
+          if (!navigator.canShare({ files: [file] })) return;
+          event.preventDefault();
+          navigator.share({ files: [file], title: "My dream" }).catch((err) => {
+            if (err?.name !== "AbortError")
+              window.open(url, "_blank", "noopener");
+          });
+        }
+
+        function videoProgress(status, startedAt) {
+          if (videoJob?.dreamId !== currentId) return;
+          const elapsed = Date.now() - startedAt;
+          // Easing curve: moves quickly at first, approaches 95% around 3x typical time.
+          const fraction = Math.min(
+            0.95,
+            0.05 + 0.9 * (1 - Math.exp(-elapsed / VIDEO_TYPICAL_MS)),
+          );
+          let label = `Rendering your dream · ${formatElapsed(elapsed)}`;
+          if (status?.status === "IN_QUEUE") {
+            const pos = Number.isFinite(status.queue_position)
+              ? ` (position ${status.queue_position + 1})`
+              : "";
+            label = `Waiting in the fal.ai queue${pos} · ${formatElapsed(elapsed)}`;
+          } else if (!status) {
+            label = `Sending your dream to fal.ai…`;
+          }
+          showProgress({ label, fraction, cancellable: true });
+        }
+
+        function setVideoBusy(busy) {
+          els.videoBtn.disabled = busy;
+          els.videoBtn.textContent = busy
+            ? "🎬 Rendering video…"
+            : "🎬 Generate 5s Dream Video";
+          if (busy) holdWake("video");
+          else releaseWake("video");
+        }
+
+        async function submitVideo(key, prompt) {
+          const model = getFalVideoModel();
+          const url = FAL_QUEUE_BASE + model;
+          const send = (body) =>
+            fetch(url, {
+              method: "POST",
+              headers: falHeaders(key),
+              body: JSON.stringify(body),
+            });
+
+          let response = await send({
+            prompt,
+            aspect_ratio: "16:9",
+            duration: "5s",
+          });
+          if (response.status === 422) response = await send({ prompt }); // older model input schemas
+          if (!response.ok)
+            throw userError(
+              friendlyFalError(
+                response.status,
+                await readFalError(response),
+                model,
+              ),
+            );
+
+          const json = await response.json();
+          if (!json?.status_url || !json?.response_url)
+            throw userError("fal.ai did not return a queue ticket.");
+          return {
+            statusUrl: json.status_url,
+            responseUrl: json.response_url,
+            cancelUrl: json.cancel_url || "",
+          };
+        }
+
+        async function generateVideo() {
+          saveNow();
+          if (!hasDreamContent()) {
+            toast("Dictate or type a dream first.");
+            return;
+          }
+          const prompt = promptForGeneration();
+          const key = getFalKey();
+          if (!key) {
+            noKeyNotice(
+              els.videoArea,
+              prompt,
+              "Add a fal.ai key in ⚙️ Settings to generate dream videos.",
+            );
+            return;
+          }
+          if (videoJob) {
+            toast("A video is already rendering.");
+            return;
+          }
+
+          const dream = ensureCurrentDream();
+          persistDreams();
+          els.videoArea.replaceChildren();
+          const startedAt = Date.now();
+          const job = { dreamId: dream.id, cancelled: false, cancelUrl: "" };
+          videoJob = job;
+          setVideoBusy(true);
+          videoProgress(null, startedAt);
+
+          try {
+            const ticket = await submitVideo(key, prompt);
+            if (job.cancelled) {
+              // Cancelled while submitting: cancel the ticket we just got too.
+              if (ticket.cancelUrl)
+                fetch(ticket.cancelUrl, {
+                  method: "PUT",
+                  headers: falHeaders(key),
+                }).catch(() => {});
+              return;
+            }
+            job.cancelUrl = ticket.cancelUrl;
+            dream.pendingVideo = { ...ticket, startedAt };
+            persistDreams();
+            renderList();
+            await pollVideo(dream.id);
+          } catch (err) {
+            if (!job.cancelled) failVideo(dream.id, err);
+          }
+        }
+
+        /** Polls a queued render until it completes; survives reloads via pendingVideo. */
+        async function pollVideo(dreamId) {
+          const dream = findDream(dreamId);
+          const pending = dream?.pendingVideo;
+          const key = getFalKey();
+          if (!dream || !pending || !key) return;
+
+          if (!videoJob) {
+            videoJob = {
+              dreamId,
+              cancelled: false,
+              cancelUrl: pending.cancelUrl,
+            };
+            setVideoBusy(true);
+          }
+          const job = videoJob;
+
+          try {
+            while (!job.cancelled) {
+              if (Date.now() - pending.startedAt > VIDEO_MAX_WAIT_MS) {
+                throw userError(
+                  "The video is taking unusually long. Reopen the app later and it will check again.",
+                );
+              }
+
+              let status = null;
+              try {
+                const res = await fetch(
+                  `${pending.statusUrl}${pending.statusUrl.includes("?") ? "&" : "?"}logs=0`,
+                  { headers: falHeaders(key) },
+                );
+                if (
+                  res.status === 401 ||
+                  res.status === 403 ||
+                  res.status === 404
+                ) {
+                  throw userError(
+                    friendlyFalError(
+                      res.status,
+                      await readFalError(res),
+                      getFalVideoModel(),
+                    ),
+                  );
+                }
+                if (res.ok) status = await res.json();
+              } catch (err) {
+                if (err?.handled) throw err;
+                // Network blip (phone asleep, lift, tunnel): keep waiting.
+              }
+
+              if (job.cancelled) return;
+              videoProgress(
+                status || { status: "IN_PROGRESS" },
+                pending.startedAt,
+              );
+
+              if (status?.status === "COMPLETED") {
+                if (status.error)
+                  throw userError(
+                    `fal.ai could not render this video: ${status.error}`,
+                  );
+                const res = await fetch(pending.responseUrl, {
+                  headers: falHeaders(key),
+                });
+                if (!res.ok)
+                  throw userError(
+                    friendlyFalError(
+                      res.status,
+                      await readFalError(res),
+                      getFalVideoModel(),
+                    ),
+                  );
+                const json = await res.json();
+                const url =
+                  json?.video?.url ||
+                  json?.data?.video?.url ||
+                  json?.videos?.[0]?.url;
+                if (!url)
+                  throw userError("fal.ai finished but returned no video.");
+                completeVideo(dreamId, url);
+                return;
+              }
+              await sleep(VIDEO_POLL_MS);
+            }
+          } catch (err) {
+            if (!job.cancelled)
+              failVideo(dreamId, err, {
+                keepPending: /unusually long/.test(err?.message || ""),
+              });
+          }
+        }
+
+        function completeVideo(dreamId, url) {
+          const dream = findDream(dreamId);
+          if (dream) {
+            dream.video = { url, createdAt: Date.now() };
+            delete dream.pendingVideo;
+            persistDreams();
+          }
+          videoJob = null;
+          setVideoBusy(false);
+          if (currentId === dreamId) {
+            hideProgress();
+            renderVideo(url);
+            els.videoArea.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+            });
+          }
+          renderList();
+          toast("Your dream video is ready.", 3500);
+        }
+
+        function failVideo(dreamId, err, { keepPending = false } = {}) {
+          const dream = findDream(dreamId);
+          if (dream && !keepPending) {
+            delete dream.pendingVideo;
+            persistDreams();
+          }
+          videoJob = null;
+          setVideoBusy(false);
+          const message = err?.handled
+            ? err.message
+            : "Could not reach fal.ai. Check your connection and try again.";
+          if (currentId === dreamId) {
+            hideProgress();
+            notice(els.videoArea, [document.createTextNode(message)]);
+          } else {
+            toast(message, 4500);
+          }
+          renderList();
+        }
+
+        function cancelVideo(silent = false) {
+          if (!videoJob) return;
+          const job = videoJob;
+          job.cancelled = true;
+          const dream = findDream(job.dreamId);
+          const key = getFalKey();
+          if (job.cancelUrl && key) {
+            fetch(job.cancelUrl, {
+              method: "PUT",
+              headers: falHeaders(key),
+            }).catch(() => {});
+          }
+          if (dream) {
+            delete dream.pendingVideo;
+            persistDreams();
+          }
+          videoJob = null;
+          setVideoBusy(false);
+          hideProgress();
+          renderList();
+          if (!silent)
+            toast(
+              "Video cancelled. fal.ai may still bill work already started.",
+              4000,
+            );
+        }
+
+        /** Picks up a render that was still going when the app was closed. */
+        function resumePendingVideo() {
+          const pending = dreams.find(
+            (d) =>
+              d.pendingVideo &&
+              Date.now() - d.pendingVideo.startedAt < PENDING_RESUME_MAX_AGE_MS,
+          );
+          for (const d of dreams) {
+            if (d.pendingVideo && d !== pending) delete d.pendingVideo; // stale
+          }
+          if (pending && getFalKey()) pollVideo(pending.id);
         }
 
         // =========================================================================
@@ -1339,21 +2275,84 @@
         );
         els.readBtn.addEventListener("click", toggleReading);
         els.newBtn.addEventListener("click", startNewDream);
-        els.visualizeBtn.addEventListener("click", visualizeDream);
-        els.dreamText.addEventListener("input", scheduleSave);
-        els.saveKeyBtn.addEventListener("click", saveSettings);
-        els.clearKeyBtn.addEventListener("click", clearKey);
-        els.apiKey.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") saveSettings();
+        els.frameBtn.addEventListener("click", generateFrame);
+        els.videoBtn.addEventListener("click", generateVideo);
+        els.cancelVideoBtn.addEventListener("click", () => cancelVideo());
+        els.dreamText.addEventListener("input", () => {
+          refreshPrompt();
+          scheduleSave();
         });
+
+        els.castPills.addEventListener("click", (event) => {
+          const pill = event.target.closest(".pill");
+          if (!pill) return;
+          director.character =
+            director.character === pill.dataset.character
+              ? ""
+              : pill.dataset.character;
+          for (const p of els.castPills.querySelectorAll(".pill")) {
+            p.setAttribute(
+              "aria-checked",
+              String(p.dataset.character === director.character),
+            );
+          }
+          onDirectorChange();
+        });
+        els.appearance.addEventListener("input", () => {
+          director.appearance = els.appearance.value;
+          onDirectorChange();
+        });
+        els.sceneLeft.addEventListener("input", () => {
+          director.left = els.sceneLeft.value;
+          onDirectorChange();
+        });
+        els.sceneRight.addEventListener("input", () => {
+          director.right = els.sceneRight.value;
+          onDirectorChange();
+        });
+        els.visualStyle.addEventListener("change", () => {
+          director.style = els.visualStyle.value;
+          onDirectorChange();
+        });
+        els.masterPrompt.addEventListener("input", () => {
+          director.prompt = els.masterPrompt.value;
+          director.promptEdited = true;
+          renderPromptStatus();
+          scheduleSave();
+        });
+        els.rebuildPromptBtn.addEventListener("click", () => {
+          director.promptEdited = false;
+          refreshPrompt();
+          renderPromptStatus();
+          scheduleSave();
+        });
+
+        els.saveSettingsBtn.addEventListener("click", saveSettings);
+        els.clearFalBtn.addEventListener("click", () => {
+          if (videoJob) cancelVideo(true);
+          removeStore(STORAGE.falKey);
+          renderKeyStatus();
+          toast("fal.ai key cleared.");
+        });
+        els.clearOpenaiBtn.addEventListener("click", () => {
+          removeStore(STORAGE.apiKey);
+          renderKeyStatus();
+          toast("OpenAI key cleared.");
+        });
+        for (const input of [els.falKey, els.openaiKey]) {
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") saveSettings();
+          });
+        }
 
         // Flush on every way a phone can background or kill the page.
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState === "hidden") {
             commitPendingInterim();
             saveNow();
-          } else if (voice.listening) {
-            acquireWakeLock(); // wake locks drop when the page is hidden
+          } else if (wake.reasons.size) {
+            wake.lock = null; // wake locks drop while hidden
+            holdWake([...wake.reasons][0]);
           }
         });
         window.addEventListener("pagehide", () => {
@@ -1362,16 +2361,11 @@
         });
 
         // Initial render
-        const opening = currentDream();
-        if (opening) {
-          els.dreamText.value = opening.text;
-          showStoredFrame(opening);
-        }
-        renderMeta();
-        renderList();
+        loadIntoEditor(currentDream());
         renderKeyStatus();
         tickClock();
         setInterval(tickClock, 15000);
+        resumePendingVideo();
       })();
     </script>
   </body>
