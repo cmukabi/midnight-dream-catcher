@@ -122,6 +122,71 @@
         border-color: var(--amber-dim);
       }
 
+      /* Subscriber account pill + primary CTA -------------------------------------- */
+      .account-pill {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        margin-top: -6px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--black);
+        color: var(--amber-dim);
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+        touch-action: manipulation;
+      }
+      .account-pill.pro {
+        color: var(--amber-hi);
+        border-color: var(--amber-dim);
+        background: #120a00;
+      }
+      .account-pill.empty {
+        color: var(--amber);
+        border-color: var(--danger);
+      }
+      .account-pill:focus-visible {
+        outline: 2px solid var(--amber);
+        outline-offset: 2px;
+      }
+      .btn-link.btn-primary,
+      button.btn-primary {
+        border: 2px solid var(--amber);
+        background: #1a0e00;
+        color: var(--amber-hi);
+        text-align: center;
+        line-height: 1.3;
+        padding: 10px 16px;
+      }
+      .notice .btn-link,
+      .notice button {
+        margin-top: 12px;
+        width: 100%;
+      }
+      .notice-actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .notice-actions > * {
+        margin-top: 0 !important;
+      }
+      .dev-override {
+        background: var(--black);
+      }
+      .sub-status {
+        font-size: 14px;
+        color: var(--amber-dim);
+        margin: 0;
+      }
+      .sub-status.ok {
+        color: var(--amber-hi);
+      }
+
       /* Sleep overlay ------------------------------------------------------------ */
       .sleep-overlay {
         position: fixed;
@@ -385,7 +450,7 @@
         color: var(--amber-dim);
         transition: transform 200ms;
       }
-      details[open] summary::after {
+      details[open] > summary::after {
         transform: rotate(180deg);
       }
       .drawer-body {
@@ -785,6 +850,14 @@
           </button>
         </div>
       </header>
+      <a
+        class="account-pill"
+        id="accountPill"
+        href="#"
+        target="_blank"
+        rel="noopener"
+        >🔒 Upgrade to Pro (£12/mo)</a
+      >
 
       <button
         class="dictate"
@@ -972,129 +1045,173 @@
       <details id="settings">
         <summary>⚙️ Settings</summary>
         <div class="drawer-body">
-          <p class="subhead">fal.ai (frames + videos)</p>
-          <label for="falKey">fal.ai API key</label>
+          <p class="subhead">👤 Subscriber Login (No API Key Needed)</p>
+          <label for="subEmail">Subscriber email</label>
           <input
-            id="falKey"
-            type="password"
-            autocomplete="off"
+            id="subEmail"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="KEY_ID:KEY_SECRET"
+            placeholder="you@example.com"
           />
-          <label for="falImageModel">Image Model ID</label>
-          <input
-            id="falImageModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="fal-ai/flux/schnell"
-          />
-          <label for="falVideoModel">Video Model ID</label>
-          <input
-            id="falVideoModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="fal-ai/minimax/video-01"
-          />
-          <label for="falTtsModel">Narration Model ID</label>
-          <input
-            id="falTtsModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="fal-ai/kokoro/american-english"
-          />
+          <button type="button" id="checkAccessBtn">
+            Check / Activate Access
+          </button>
+          <p class="sub-status" id="subStatus" aria-live="polite"></p>
+          <a
+            class="btn-link btn-primary"
+            id="subscribeBtn"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            >✨ Subscribe for Pro Access (£12/mo — 25 Monthly Creations)</a
+          >
           <p class="hint">
-            Leave blank for the defaults. Paste any fal.ai model ID to switch,
-            e.g. fal-ai/kling-video/v1.6/standard/text-to-video. Narrator voices
-            are tuned for the default Kokoro model.
+            Use the same email at checkout, then tap Check / Activate Access.
+          </p>
+          <button type="button" id="signOutBtn" hidden>Sign Out</button>
+          <p class="hint">
+            Free forever without an account: 🎤 Dictation, 🔊 Read Back,
+            device-voice narration and the offline 🔮 symbol guide.
           </p>
 
-          <p class="subhead">Dream decoding (OpenAI or Anthropic)</p>
-          <label for="openaiKey"
-            >OpenAI API key (also a backup for frames)</label
-          >
-          <input
-            id="openaiKey"
-            type="password"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="sk-…"
-          />
-          <label for="anthropicKey">Anthropic API key</label>
-          <input
-            id="anthropicKey"
-            type="password"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="sk-ant-…"
-          />
-          <label for="openaiTextModel">OpenAI decoder model</label>
-          <input
-            id="openaiTextModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="gpt-4o-mini"
-          />
-          <label for="anthropicModel">Anthropic decoder model</label>
-          <input
-            id="anthropicModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="claude-haiku-4-5"
-          />
-          <label for="openaiModel">OpenAI image model (frames backup)</label>
-          <input
-            id="openaiModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="gpt-image-2"
-          />
-          <label for="falLlmModel"
-            >fal.ai decoder model (used with a fal key)</label
-          >
-          <input
-            id="falLlmModel"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="google/gemini-2.5-flash"
-          />
-          <p class="hint">
-            🔮 Decode picks by key: Anthropic (sk-ant-…), then OpenAI (sk-…),
-            then fal.ai (fal_sk_… or KEY_ID:SECRET). With no key, it uses the
-            free offline symbol guide.
-          </p>
+          <details class="dev-override" id="devOverride">
+            <summary>🛠️ Developer Override (Own fal.ai Key)</summary>
+            <div class="drawer-body">
+              <p class="hint">
+                For the app owner's testing. A key saved here is used instead of
+                subscriber credits.
+              </p>
+              <label for="falKey">fal.ai API key</label>
+              <input
+                id="falKey"
+                type="password"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="fal_sk_… or KEY_ID:KEY_SECRET"
+              />
+              <label for="falImageModel">Image Model ID</label>
+              <input
+                id="falImageModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="fal-ai/flux/schnell"
+              />
+              <label for="falVideoModel">Video Model ID</label>
+              <input
+                id="falVideoModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="fal-ai/minimax/video-01"
+              />
+              <label for="falTtsModel">Narration Model ID</label>
+              <input
+                id="falTtsModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="fal-ai/kokoro/american-english"
+              />
+              <label for="falLlmModel">Decoder model (fal any-llm)</label>
+              <input
+                id="falLlmModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="google/gemini-2.5-flash"
+              />
+              <p class="hint">
+                Model IDs apply to subscriber requests too. Leave blank for the
+                defaults.
+              </p>
 
-          <button type="button" id="saveSettingsBtn">Save</button>
-          <div class="row">
-            <button type="button" id="clearFalBtn">Clear fal Key</button>
-            <button type="button" id="clearOpenaiBtn">Clear OpenAI Key</button>
-            <button type="button" id="clearAnthropicBtn" class="wide">
-              Clear Anthropic Key
-            </button>
-          </div>
-          <p class="hint" id="keyStatus"></p>
-          <p class="hint">
-            Keys stay in this browser's storage on this phone and are sent only
-            to the service they belong to (fal.ai, OpenAI or Anthropic). Frames
-            and videos are billed to your own accounts. Frames use fal.ai when a
-            fal key is saved, otherwise OpenAI.
-          </p>
+              <label for="openaiKey">OpenAI API key (optional)</label>
+              <input
+                id="openaiKey"
+                type="password"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="sk-…"
+              />
+              <label for="anthropicKey">Anthropic API key (optional)</label>
+              <input
+                id="anthropicKey"
+                type="password"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="sk-ant-…"
+              />
+              <label for="openaiTextModel">OpenAI decoder model</label>
+              <input
+                id="openaiTextModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="gpt-4o-mini"
+              />
+              <label for="anthropicModel">Anthropic decoder model</label>
+              <input
+                id="anthropicModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="claude-haiku-4-5"
+              />
+              <label for="openaiModel"
+                >OpenAI image model (frames backup)</label
+              >
+              <input
+                id="openaiModel"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="gpt-image-2"
+              />
+
+              <label for="proxyUrlOverride">Proxy URL override</label>
+              <input
+                id="proxyUrlOverride"
+                type="url"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="https://your-worker.your-subdomain.workers.dev"
+              />
+
+              <button type="button" id="saveSettingsBtn">
+                Save Developer Settings
+              </button>
+              <div class="row">
+                <button type="button" id="clearFalBtn">Clear fal Key</button>
+                <button type="button" id="clearOpenaiBtn">
+                  Clear OpenAI Key
+                </button>
+                <button type="button" id="clearAnthropicBtn" class="wide">
+                  Clear Anthropic Key
+                </button>
+              </div>
+              <p class="hint" id="keyStatus"></p>
+              <p class="hint">
+                Developer keys stay on this phone and go only to the service
+                they belong to. Order of use: developer keys first, then
+                subscriber credits.
+              </p>
+            </div>
+          </details>
         </div>
       </details>
     </main>
@@ -1137,12 +1254,24 @@
           openaiTextModel: "mdc.openaiTextModel.v1",
           anthropicModel: "mdc.anthropicModel.v1",
           falLlmModel: "mdc.falLlmModel.v1",
+          subscriber: "mdc.subscriber.v1",
+          proxyUrl: "mdc.proxyUrl.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
           falKey: "mdc.falKey.v1",
           falImageModel: "mdc.falImageModel.v1",
           falVideoModel: "mdc.falVideoModel.v1",
           falTtsModel: "mdc.falTtsModel.v1",
         };
+
+        // ---- Live backend ------------------------------------------------------
+        // A deployed Worker lives at https://<worker>.<subdomain>.workers.dev.
+        // Developer Override > Proxy URL can replace this without editing code.
+        const PROXY_URL = "https://workers.dev";
+        const STRIPE_CHECKOUT_URL =
+          "https://buy.stripe.com/test_5kQ4gz2fzfT0fgNdOW3Ru01";
+        const PROXY_IMAGE_TIMEOUT_MS = 120000;
+        const PROXY_VIDEO_TIMEOUT_MS = 12 * 60 * 1000; // sync render through the Worker
+        const STATUS_RECHECK_MS = 60 * 1000;
 
         const FAL_SYNC_BASE = "https://fal.run/";
         const FAL_QUEUE_BASE = "https://queue.fal.run/";
@@ -1268,6 +1397,14 @@
           anthropicModel: $("anthropicModel"),
           falLlmModel: $("falLlmModel"),
           clearAnthropicBtn: $("clearAnthropicBtn"),
+          accountPill: $("accountPill"),
+          subEmail: $("subEmail"),
+          checkAccessBtn: $("checkAccessBtn"),
+          subStatus: $("subStatus"),
+          subscribeBtn: $("subscribeBtn"),
+          signOutBtn: $("signOutBtn"),
+          devOverride: $("devOverride"),
+          proxyUrlOverride: $("proxyUrlOverride"),
           decodeBtn: $("decodeBtn"),
           meaningCard: $("meaningCard"),
           meaningBody: $("meaningBody"),
@@ -2099,6 +2236,9 @@
               ? `Anthropic key saved (${mask(getAnthropicKey())}).`
               : "",
             `🔮 Decode uses ${decoderProvider() ? decoderProvider().name : "the offline symbol guide"}.`,
+            getFalKey()
+              ? "Frames, videos and AI voices use your developer key (no credits)."
+              : "",
           ].filter(Boolean);
           els.keyStatus.textContent = lines.join(" ");
           els.falKey.value = "";
@@ -2122,6 +2262,8 @@
           els.anthropicModel.value =
             readStore(STORAGE.anthropicModel, "") || "";
           els.falLlmModel.value = readStore(STORAGE.falLlmModel, "") || "";
+          els.proxyUrlOverride.value = readStore(STORAGE.proxyUrl, "") || "";
+          renderAccount();
         }
 
         function saveSettings() {
@@ -2183,6 +2325,20 @@
           writeStore(STORAGE.openaiTextModel, els.openaiTextModel.value.trim());
           writeStore(STORAGE.anthropicModel, els.anthropicModel.value.trim());
           writeStore(STORAGE.falLlmModel, els.falLlmModel.value.trim());
+          const proxyOverride = els.proxyUrlOverride.value
+            .trim()
+            .replace(/\/+$/, "");
+          if (
+            proxyOverride &&
+            !/^https:\/\/[^\s/]+\.[^\s/]+/i.test(proxyOverride)
+          ) {
+            toast(
+              "The proxy URL must start with https:// and include the full Worker address.",
+              4500,
+            );
+          } else {
+            writeStore(STORAGE.proxyUrl, proxyOverride);
+          }
           writeStore(
             STORAGE.falImageModel,
             normaliseModelId(els.falImageModel.value),
@@ -2200,6 +2356,327 @@
           toast(
             fal || oa || ant ? "Keys saved on this phone." : "Settings saved.",
           );
+        }
+
+        // =========================================================================
+        // Subscriber account + Cloudflare Worker proxy
+        // =========================================================================
+
+        const proxyBase = () =>
+          (readStore(STORAGE.proxyUrl, "") || PROXY_URL).replace(/\/+$/, "");
+        const isEmail = (v) =>
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+
+        /** @returns {{email:string, active:boolean, credits:number|null, checkedAt:number}|null} */
+        function getSubscriber() {
+          const sub = readStore(STORAGE.subscriber, null);
+          return sub && isEmail(sub.email) ? sub : null;
+        }
+        const getSubscriberEmail = () => getSubscriber()?.email || "";
+
+        function saveSubscriber(patch) {
+          const next = { ...(getSubscriber() || {}), ...patch };
+          writeStore(STORAGE.subscriber, next);
+          renderAccount();
+          return next;
+        }
+
+        /** Stripe Payment Link, prefilled with the subscriber's email when known. */
+        function checkoutUrl() {
+          const email =
+            getSubscriberEmail() ||
+            (isEmail(els.subEmail.value) ? els.subEmail.value.trim() : "");
+          if (!email) return STRIPE_CHECKOUT_URL;
+          const url = new URL(STRIPE_CHECKOUT_URL);
+          url.searchParams.set("prefilled_email", email);
+          return url.toString();
+        }
+
+        function renderAccount() {
+          const sub = getSubscriber();
+          const pill = els.accountPill;
+          pill.classList.remove("pro", "empty");
+          if (sub?.active) {
+            const credits = Number.isFinite(sub.credits) ? sub.credits : "—";
+            pill.textContent = `✨ Pro: ${credits} Credit${sub.credits === 1 ? "" : "s"}`;
+            pill.href = "#settings";
+            pill.removeAttribute("target");
+            pill.classList.add(sub.credits === 0 ? "empty" : "pro");
+            pill.setAttribute(
+              "aria-label",
+              `Pro subscriber, ${credits} credits left. Open account settings.`,
+            );
+          } else {
+            pill.textContent = "🔒 Upgrade to Pro (£12/mo)";
+            pill.href = checkoutUrl();
+            pill.target = "_blank";
+            pill.setAttribute(
+              "aria-label",
+              "Upgrade to Pro for 12 pounds a month. Opens Stripe checkout.",
+            );
+          }
+
+          els.subscribeBtn.href = checkoutUrl();
+          els.signOutBtn.hidden = !sub;
+          if (sub && document.activeElement !== els.subEmail)
+            els.subEmail.value = sub.email;
+
+          els.subStatus.classList.toggle("ok", Boolean(sub?.active));
+          els.subStatus.textContent = !sub
+            ? "Not signed in."
+            : sub.active
+              ? `Signed in as ${sub.email} · ${Number.isFinite(sub.credits) ? sub.credits : "unknown"} creations left this month.`
+              : `${sub.email} has no active subscription yet. Subscribe below with this email, then tap Check / Activate Access.`;
+        }
+
+        function parseStatus(data) {
+          const raw =
+            data?.credits ??
+            data?.remainingCredits ??
+            data?.creditsRemaining ??
+            data?.balance;
+          const credits =
+            Number.isFinite(Number(raw)) && raw !== null && raw !== ""
+              ? Number(raw)
+              : null;
+          let active = data?.active ?? data?.subscribed ?? data?.isActive;
+          if (active === undefined && typeof data?.status === "string")
+            active = /^(active|trialing)$/i.test(data.status);
+          if (active === undefined) active = credits !== null && credits > 0;
+          return { active: Boolean(active), credits };
+        }
+
+        async function checkSubscriberStatus({ email, silent = false } = {}) {
+          const address = String(email || getSubscriberEmail())
+            .trim()
+            .toLowerCase();
+          if (!isEmail(address)) {
+            if (!silent) toast("Enter the email you used at checkout.");
+            return null;
+          }
+          if (!silent) {
+            els.checkAccessBtn.disabled = true;
+            els.checkAccessBtn.textContent = "Checking…";
+          }
+          try {
+            const res = await fetch(`${proxyBase()}/status`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: address }),
+            });
+            let data = null;
+            try {
+              data = await res.json();
+            } catch {
+              data = null;
+            }
+
+            if (res.ok) {
+              const { active, credits } = parseStatus(data);
+              const sub = saveSubscriber({
+                email: address,
+                active,
+                credits,
+                checkedAt: Date.now(),
+              });
+              if (!silent)
+                toast(
+                  active
+                    ? `Pro access active · ${Number.isFinite(credits) ? credits : "?"} credits.`
+                    : "No active subscription found for that email yet.",
+                  3800,
+                );
+              return sub;
+            }
+            if (
+              res.status === 403 ||
+              res.status === 404 ||
+              res.status === 402
+            ) {
+              const sub = saveSubscriber({
+                email: address,
+                active: false,
+                credits: 0,
+                checkedAt: Date.now(),
+              });
+              if (!silent)
+                toast("No active subscription found for that email yet.", 3800);
+              return sub;
+            }
+            if (!silent)
+              toast(
+                data?.error
+                  ? `Server: ${data.error}`
+                  : `The Dream Catcher server returned an error (${res.status}).`,
+                4500,
+              );
+            return null;
+          } catch {
+            if (!silent)
+              toast(
+                "Could not reach the Dream Catcher server. Check your connection and the proxy URL.",
+                4500,
+              );
+            return null;
+          } finally {
+            if (!silent) {
+              els.checkAccessBtn.disabled = false;
+              els.checkAccessBtn.textContent = "Check / Activate Access";
+            }
+          }
+        }
+
+        function setCredits(remaining) {
+          const sub = getSubscriber();
+          if (!sub) return;
+          saveSubscriber({
+            credits: remaining,
+            active: sub.active || remaining > 0,
+          });
+        }
+
+        /**
+         * POST {PROXY_URL}/generate { email, endpoint, payload }.
+         * Accepts the fal result either at the top level or under `result` / `data`.
+         */
+        async function proxyGenerate(endpoint, payload, signal) {
+          const email = getSubscriberEmail();
+          let res;
+          try {
+            res = await fetch(`${proxyBase()}/generate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, endpoint, payload }),
+              signal,
+            });
+          } catch (err) {
+            if (err?.name === "AbortError") throw err;
+            throw userError(
+              "Could not reach the Dream Catcher server. Check your connection.",
+            );
+          }
+          let data = null;
+          try {
+            data = await res.json();
+          } catch {
+            data = null;
+          }
+
+          const remaining = Number(data?.remainingCredits);
+          if (
+            data &&
+            data.remainingCredits !== undefined &&
+            Number.isFinite(remaining)
+          )
+            setCredits(remaining);
+
+          if (res.status === 403 || res.status === 402) {
+            saveSubscriber({
+              credits: Number.isFinite(remaining) ? remaining : 0,
+            });
+            throw Object.assign(
+              userError("No active subscription or credits remaining."),
+              { upgrade: true },
+            );
+          }
+          if (res.status === 401) {
+            throw Object.assign(
+              userError(
+                "Your subscriber email wasn’t recognised. Check it in ⚙️ Settings.",
+              ),
+              { signIn: true },
+            );
+          }
+          if (!res.ok) {
+            const detail = data?.error || data?.message || data?.detail;
+            throw userError(
+              detail
+                ? `Dream Catcher server: ${typeof detail === "string" ? detail : "request failed"}.`
+                : `The Dream Catcher server returned an error (${res.status}).`,
+            );
+          }
+          const inner = data?.result ?? data?.data;
+          return inner && typeof inner === "object" ? inner : data;
+        }
+
+        /** Where an AI request should go: developer key, subscriber proxy, or nowhere. */
+        const routeAi = () =>
+          getFalKey() ? "dev" : getSubscriberEmail() ? "proxy" : null;
+
+        function stripeLink(label = "🔒 Upgrade to Pro (£12/mo)") {
+          const a = el("a", "btn-link btn-primary", label);
+          a.href = checkoutUrl();
+          a.target = "_blank";
+          a.rel = "noopener";
+          return a;
+        }
+
+        function signInButton() {
+          const b = el("button", "", "👤 Sign In with Subscriber Email");
+          b.type = "button";
+          b.addEventListener("click", () => {
+            openSettings();
+            setTimeout(() => els.subEmail.focus({ preventScroll: true }), 350);
+          });
+          return b;
+        }
+
+        /** Shown when there's no developer key and no subscriber email. */
+        function accessNotice(area, featureLabel) {
+          const actions = el("div", "notice-actions");
+          actions.append(signInButton(), stripeLink());
+          notice(area, [
+            el("strong", "", `${featureLabel} is a Pro feature.`),
+            document.createTextNode(
+              " Sign in with your subscriber email, or upgrade for 25 creations a month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.",
+            ),
+            actions,
+          ]);
+        }
+
+        /** Shown when the proxy says the subscription is inactive or out of credits. */
+        function upgradeNotice(area, message) {
+          const actions = el("div", "notice-actions");
+          const recheck = el("button", "", "↻ I’ve Subscribed: Check Again");
+          recheck.type = "button";
+          recheck.addEventListener("click", () => checkSubscriberStatus());
+          actions.append(
+            stripeLink("✨ Subscribe / Renew Pro (£12/mo)"),
+            recheck,
+          );
+          notice(area, [
+            el("strong", "", message),
+            document.createTextNode(
+              " Your monthly credits renew with your subscription.",
+            ),
+            actions,
+          ]);
+        }
+
+        function handleAiError(area, err, fallbackMessage) {
+          if (err?.upgrade) return upgradeNotice(area, err.message);
+          if (err?.signIn) {
+            const actions = el("div", "notice-actions");
+            actions.append(signInButton());
+            return notice(area, [
+              document.createTextNode(err.message),
+              actions,
+            ]);
+          }
+          const message = err?.handled ? err.message : fallbackMessage;
+          notice(area, [document.createTextNode(message)]);
+        }
+
+        // Re-check credits when the app comes back (e.g. returning from Stripe).
+        let lastStatusCheck = 0;
+        function maybeRefreshStatus() {
+          if (
+            !getSubscriberEmail() ||
+            Date.now() - lastStatusCheck < STATUS_RECHECK_MS
+          )
+            return;
+          lastStatusCheck = Date.now();
+          checkSubscriberStatus({ silent: true });
         }
 
         // =========================================================================
@@ -2404,6 +2881,17 @@
           return src;
         }
 
+        async function proxyImage(prompt, signal) {
+          const result = await proxyGenerate(
+            getFalImageModel(),
+            { prompt, image_size: "landscape_16_9", num_images: 1 },
+            signal,
+          );
+          const src = result?.images?.[0]?.url || result?.image?.url;
+          if (!src) throw userError("The server returned no image.");
+          return src;
+        }
+
         async function generateFrame() {
           saveNow();
           if (!hasDreamContent()) {
@@ -2413,12 +2901,10 @@
           const prompt = promptForGeneration();
           const falKey = getFalKey();
           const openaiKey = getOpenaiKey();
-          if (!falKey && !openaiKey) {
-            noKeyNotice(
-              els.frameArea,
-              prompt,
-              "Add a fal.ai key in ⚙️ Settings to generate storyboard frames.",
-            );
+          const useProxy =
+            !falKey && !openaiKey && Boolean(getSubscriberEmail());
+          if (!falKey && !openaiKey && !useProxy) {
+            accessNotice(els.frameArea, "🖼️ Storyboard frames");
             return;
           }
 
@@ -2433,12 +2919,14 @@
           const controller = new AbortController();
           const timeout = setTimeout(
             () => controller.abort(),
-            IMAGE_TIMEOUT_MS,
+            useProxy ? PROXY_IMAGE_TIMEOUT_MS : IMAGE_TIMEOUT_MS,
           );
           try {
             const src = falKey
               ? await falImage(falKey, prompt, controller.signal)
-              : await openaiImage(openaiKey, prompt, controller.signal);
+              : useProxy
+                ? await proxyImage(prompt, controller.signal)
+                : await openaiImage(openaiKey, prompt, controller.signal);
 
             sessionImages.set(dream.id, src);
             const compact = await compressImage(src);
@@ -2457,7 +2945,7 @@
                 ? "The frame took too long. Try again."
                 : "Could not reach the image service. Check your connection.";
             if (currentId === dream.id)
-              notice(els.frameArea, [document.createTextNode(message)]);
+              handleAiError(els.frameArea, err, message);
             else toast(message, 4500);
           } finally {
             clearTimeout(timeout);
@@ -2635,6 +3123,22 @@
           return url;
         }
 
+        async function proxyTts(text, narrator, signal) {
+          const result = await proxyGenerate(
+            getFalTtsModel(),
+            { prompt: text, voice: narrator.voice, speed: narrator.speed },
+            signal,
+          );
+          const url =
+            result?.audio?.url ||
+            result?.audio_url?.url ||
+            result?.audio_url ||
+            result?.audio_file?.url;
+          if (!url || typeof url !== "string")
+            throw userError("The server returned no audio.");
+          return url;
+        }
+
         async function addNarration(button) {
           const dream = currentDream();
           if (!dream?.video?.url) return;
@@ -2652,20 +3156,27 @@
             : "storyteller";
           const narrator = NARRATORS[narratorId];
           const key = getFalKey();
+          const route = routeAi();
           const dreamId = dream.id;
 
           // Free path: device speech, synced to play/pause.
-          if (narratorId === "device" || !key) {
+          if (narratorId === "device" || !route) {
             dream.narration = { kind: "device", voice: narratorId };
             persistDreams();
             renderVideo(dream.video.url);
             renderList();
-            toast(
-              key
-                ? "Device voice ready. Press play."
-                : "No fal.ai key saved, so your device voice will narrate. Press play.",
-              3800,
-            );
+            if (narratorId === "device") {
+              toast("Device voice ready. Press play.", 3000);
+            } else {
+              const status = document.getElementById("narrationStatus");
+              if (status) {
+                status.textContent =
+                  "AI voices are a Pro feature, so your free device voice will narrate. ";
+                const link = stripeLink("🔒 Upgrade to Pro (£12/mo)");
+                link.style.marginTop = "10px";
+                status.after(link);
+              }
+            }
             return;
           }
 
@@ -2674,12 +3185,10 @@
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
           try {
-            const audioUrl = await requestTts(
-              key,
-              text,
-              narrator,
-              controller.signal,
-            );
+            const audioUrl =
+              route === "dev"
+                ? await requestTts(key, text, narrator, controller.signal)
+                : await proxyTts(text, narrator, controller.signal);
             const target = findDream(dreamId);
             if (!target) return;
             target.narration = { kind: "ai", voice: narratorId, audioUrl };
@@ -2701,8 +3210,14 @@
               renderList();
             }
             const status = document.getElementById("narrationStatus");
-            if (status)
+            if (status) {
               status.textContent = `${reason} Your device voice will narrate instead.`;
+              if (err?.upgrade) {
+                const link = stripeLink("✨ Subscribe / Renew Pro (£12/mo)");
+                link.style.marginTop = "10px";
+                status.after(link);
+              }
+            }
           } finally {
             clearTimeout(timeout);
             if (button.isConnected) {
@@ -2962,6 +3477,82 @@
           };
         }
 
+        /**
+         * Subscriber path: one long POST to the Worker, which renders on fal.ai
+         * and replies with the finished video. Progress is time-based.
+         */
+        async function generateVideoViaProxy(prompt) {
+          const dream = ensureCurrentDream();
+          persistDreams();
+          els.videoArea.replaceChildren();
+          const startedAt = Date.now();
+          const controller = new AbortController();
+          const job = {
+            dreamId: dream.id,
+            cancelled: false,
+            cancelUrl: "",
+            controller,
+            proxy: true,
+          };
+          videoJob = job;
+          setVideoBusy(true);
+          const tick = () => {
+            if (videoJob !== job || videoJob.dreamId !== currentId) return;
+            const elapsed = Date.now() - startedAt;
+            const fraction = Math.min(
+              0.95,
+              0.05 + 0.9 * (1 - Math.exp(-elapsed / VIDEO_TYPICAL_MS)),
+            );
+            showProgress({
+              label: `Rendering your dream on the Dream Catcher server · ${formatElapsed(elapsed)}`,
+              fraction,
+              cancellable: true,
+            });
+          };
+          tick();
+          const ticker = setInterval(tick, 1000);
+          const timeout = setTimeout(
+            () => controller.abort(),
+            PROXY_VIDEO_TIMEOUT_MS,
+          );
+
+          try {
+            const result = await proxyGenerate(
+              getFalVideoModel(),
+              { prompt },
+              controller.signal,
+            );
+            const url =
+              result?.video?.url ||
+              result?.videos?.[0]?.url ||
+              result?.video_url;
+            if (!url)
+              throw userError("The server finished but returned no video.");
+            if (job.cancelled) return;
+            completeVideo(dream.id, url);
+          } catch (err) {
+            if (job.cancelled) return;
+            videoJob = null;
+            setVideoBusy(false);
+            if (currentId === dream.id) {
+              hideProgress();
+              handleAiError(
+                els.videoArea,
+                err,
+                err?.name === "AbortError"
+                  ? "The video took too long. Try again in a few minutes."
+                  : "Could not reach the Dream Catcher server. Check your connection and try again.",
+              );
+            } else {
+              toast(err?.message || "The video could not be rendered.", 4500);
+            }
+            renderList();
+          } finally {
+            clearInterval(ticker);
+            clearTimeout(timeout);
+          }
+        }
+
         async function generateVideo() {
           saveNow();
           if (!hasDreamContent()) {
@@ -2970,16 +3561,17 @@
           }
           const prompt = promptForGeneration();
           const key = getFalKey();
-          if (!key) {
-            noKeyNotice(
-              els.videoArea,
-              prompt,
-              "Add a fal.ai key in ⚙️ Settings to generate dream videos.",
-            );
+          const route = routeAi();
+          if (!route) {
+            accessNotice(els.videoArea, "🎬 Dream videos");
             return;
           }
           if (videoJob) {
             toast("A video is already rendering.");
+            return;
+          }
+          if (route === "proxy") {
+            await generateVideoViaProxy(prompt);
             return;
           }
 
@@ -3154,6 +3746,7 @@
           job.cancelled = true;
           const dream = findDream(job.dreamId);
           const key = getFalKey();
+          job.controller?.abort(); // subscriber (proxy) render
           if (job.cancelUrl && key) {
             fetch(job.cancelUrl, {
               method: "PUT",
@@ -3170,7 +3763,9 @@
           renderList();
           if (!silent)
             toast(
-              "Video cancelled. fal.ai may still bill work already started.",
+              job.proxy
+                ? "Video cancelled. A credit may still be used if rendering had started."
+                : "Video cancelled. fal.ai may still bill work already started.",
               4000,
             );
         }
@@ -3733,7 +4328,25 @@
               name: `fal.ai (${getFalLlmModel()})`,
               run: (t, sig) => decodeWithFal(falKey, t, sig),
             };
+          if (getSubscriberEmail())
+            return {
+              name: "Dream Catcher Pro",
+              run: (t, sig) => decodeViaProxy(t, sig),
+            };
           return null;
+        }
+
+        async function decodeViaProxy(text, signal) {
+          const result = await proxyGenerate(
+            "fal-ai/any-llm",
+            {
+              model: getFalLlmModel(),
+              prompt: `<dream>\n${text}\n</dream>`,
+              system_prompt: DECODER_SYSTEM_PROMPT,
+            },
+            signal,
+          );
+          return result?.output || "";
         }
 
         function friendlyLlmError(provider, status, detail) {
@@ -3817,6 +4430,7 @@
               text,
               createdAt: Date.now(),
               fallbackReason: reason,
+              upgrade: Boolean(err?.upgrade),
               ...decodeOffline(text),
             });
           } finally {
@@ -3901,6 +4515,8 @@
                 `${meaning.fallbackReason} Showing the offline symbol guide instead.`,
               ),
             );
+            if (meaning.upgrade)
+              body.push(stripeLink("✨ Subscribe / Renew Pro (£12/mo)"));
           }
           const currentText = els.dreamText.value.trim().replace(/\s+/g, " ");
           if (meaning.text && currentText && meaning.text !== currentText) {
@@ -3987,9 +4603,10 @@
               el(
                 "p",
                 "hint",
-                "Add a fal.ai, OpenAI or Anthropic key in ⚙️ Settings for a full AI reading.",
+                "Sign in as a Pro subscriber in ⚙️ Settings, or upgrade, for a full AI reading.",
               ),
             );
+            if (!getSubscriberEmail()) body.push(stripeLink());
           }
           body.push(
             el("p", "hint", "For reflection and creativity, not a diagnosis."),
@@ -4131,6 +4748,33 @@
         // =========================================================================
 
         els.exitBtn.addEventListener("click", exitApp);
+        els.accountPill.addEventListener("click", (event) => {
+          if (getSubscriber()?.active) {
+            event.preventDefault();
+            openSettings();
+          } else {
+            els.accountPill.href = checkoutUrl(); // opens Stripe in a new tab
+          }
+        });
+        els.subscribeBtn.addEventListener("click", () => {
+          els.subscribeBtn.href = checkoutUrl();
+        });
+        els.checkAccessBtn.addEventListener("click", () =>
+          checkSubscriberStatus({ email: els.subEmail.value }),
+        );
+        els.subEmail.addEventListener("keydown", (e) => {
+          if (e.key === "Enter")
+            checkSubscriberStatus({ email: els.subEmail.value });
+        });
+        els.subEmail.addEventListener("input", () => {
+          if (!getSubscriber()) els.subscribeBtn.href = checkoutUrl();
+        });
+        els.signOutBtn.addEventListener("click", () => {
+          removeStore(STORAGE.subscriber);
+          els.subEmail.value = "";
+          renderAccount();
+          toast("Signed out on this phone.");
+        });
         els.reopenBtn.addEventListener("click", reopenEditor);
         els.headerSettingsBtn.addEventListener("click", openSettings);
         els.sleepOverlay.addEventListener("keydown", (e) => {
@@ -4238,9 +4882,12 @@
           if (document.visibilityState === "hidden") {
             commitPendingInterim();
             saveNow();
-          } else if (wake.reasons.size && els.sleepOverlay.hidden) {
-            wake.lock = null; // wake locks drop while hidden
-            holdWake([...wake.reasons][0]);
+          } else {
+            if (wake.reasons.size && els.sleepOverlay.hidden) {
+              wake.lock = null; // wake locks drop while hidden
+              holdWake([...wake.reasons][0]);
+            }
+            maybeRefreshStatus(); // e.g. back from Stripe checkout
           }
         });
         window.addEventListener("pagehide", () => {
@@ -4251,6 +4898,7 @@
         // Initial render
         loadIntoEditor(currentDream());
         renderKeyStatus();
+        maybeRefreshStatus();
         tickClock();
         setInterval(tickClock, 15000);
         resumePendingVideo();
