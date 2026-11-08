@@ -76,9 +76,14 @@
 
       header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 10px;
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
       }
       h1 {
         margin: 0;
@@ -87,11 +92,98 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--amber-dim);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .clock {
-        font-size: 15px;
+        font-size: 14px;
         font-variant-numeric: tabular-nums;
         color: var(--amber-dim);
+      }
+      .header-actions {
+        display: flex;
+        gap: 8px;
+        flex: 0 0 auto;
+      }
+      .header-btn {
+        min-height: var(--tap);
+        min-width: var(--tap);
+        padding: 0 14px;
+        border-radius: 999px;
+        background: var(--black);
+        color: var(--amber-dim);
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .header-btn:hover,
+      .header-btn:focus-visible {
+        color: var(--amber-hi);
+        border-color: var(--amber-dim);
+      }
+
+      /* Sleep overlay ------------------------------------------------------------ */
+      .sleep-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: #000000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: calc(24px + var(--safe-top)) 28px
+          calc(24px + var(--safe-bottom));
+        text-align: center;
+        color: var(--amber-faint);
+        opacity: 0;
+        transition: opacity 600ms ease;
+      }
+      .sleep-overlay[hidden] {
+        display: none;
+      }
+      .sleep-overlay.show {
+        opacity: 1;
+      }
+      .sleep-moon {
+        font-size: 52px;
+        line-height: 1;
+        color: var(--amber-faint);
+        font-family: "Apple Symbols", "Segoe UI Symbol", serif;
+      }
+      .tint {
+        filter: grayscale(1) sepia(1) saturate(4) hue-rotate(-12deg)
+          brightness(0.6);
+      } /* recolours emoji to dim amber */
+      .sleep-title {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--amber-dim);
+        letter-spacing: 0.02em;
+      }
+      .sleep-text {
+        margin: 0;
+        max-width: 22em;
+        font-size: 16px;
+        line-height: 1.6;
+        color: var(--amber-faint);
+      }
+      .sleep-clock {
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+        color: var(--amber-faint);
+      }
+      .sleep-overlay button {
+        min-width: 220px;
+        background: var(--black);
+        color: var(--amber-dim);
+        border-color: var(--line);
+        font-weight: 600;
+      }
+      body.sleeping {
+        overflow: hidden;
       }
       h2 {
         margin: 0;
@@ -540,8 +632,28 @@
   <body>
     <main>
       <header>
-        <h1>Midnight Dream Catcher</h1>
-        <span class="clock" id="clock" aria-hidden="true"></span>
+        <div class="brand">
+          <h1>Midnight Dream Catcher</h1>
+          <span class="clock" id="clock" aria-hidden="true"></span>
+        </div>
+        <div class="header-actions">
+          <button
+            type="button"
+            class="header-btn"
+            id="headerSettingsBtn"
+            aria-label="Open settings"
+          >
+            ⚙️
+          </button>
+          <button
+            type="button"
+            class="header-btn"
+            id="exitBtn"
+            aria-label="Done: save and exit"
+          >
+            🌙 Done
+          </button>
+        </div>
       </header>
 
       <button
@@ -776,6 +888,26 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <div
+      class="sleep-overlay"
+      id="sleepOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sleepTitle"
+      hidden
+    >
+      <div class="sleep-moon" aria-hidden="true">&#x263E;&#xFE0E;</div>
+      <p class="sleep-title" id="sleepTitle">
+        <span class="tint" aria-hidden="true">💤</span> Sweet Dreams — Entry
+        Saved.
+      </p>
+      <p class="sleep-text" id="sleepText">
+        Safe to lock your screen or swipe home.
+      </p>
+      <span class="sleep-clock" id="sleepClock" aria-hidden="true"></span>
+      <button type="button" id="reopenBtn">Re-open Editor</button>
+    </div>
+
     <script>
       (() => {
         "use strict";
@@ -874,6 +1006,13 @@
           clearOpenaiBtn: $("clearOpenaiBtn"),
           keyStatus: $("keyStatus"),
           toast: $("toast"),
+          headerSettingsBtn: $("headerSettingsBtn"),
+          exitBtn: $("exitBtn"),
+          settings: $("settings"),
+          sleepOverlay: $("sleepOverlay"),
+          sleepText: $("sleepText"),
+          sleepClock: $("sleepClock"),
+          reopenBtn: $("reopenBtn"),
         };
 
         function el(tag, className, text) {
@@ -1357,7 +1496,9 @@
         }
 
         function tickClock() {
-          els.clock.textContent = clockFmt.format(new Date());
+          const now = clockFmt.format(new Date());
+          els.clock.textContent = now;
+          els.sleepClock.textContent = now;
         }
 
         // =========================================================================
@@ -2296,8 +2437,105 @@
         }
 
         // =========================================================================
+        // Done / Exit
+        // =========================================================================
+
+        /** Immediate stop that keeps every word heard so far (no async onend wait). */
+        function haltDictation() {
+          if (!voice.recognition && !voice.listening) return;
+          const rec = voice.recognition;
+          voice.listening = false;
+          voice.recognition = null; // makes the old onend a no-op
+          if (rec) {
+            rec.onresult = null;
+            try {
+              rec.abort();
+            } catch {
+              /* already stopped */
+            }
+          }
+          finishDictation(); // commits pending interim words + saves
+        }
+
+        function stopAllMedia() {
+          haltDictation();
+          stopReading();
+          for (const video of document.querySelectorAll("video")) video.pause();
+        }
+
+        let lastFocus = null;
+
+        function exitApp() {
+          stopAllMedia();
+          saveNow();
+          const saved = persistDreams();
+
+          // Let the phone sleep; a running render resumes when the app reopens.
+          releaseWake("video");
+          releaseWake("dictation");
+
+          // Works when this tab was opened by script; home-screen apps ignore it.
+          try {
+            window.close();
+          } catch {
+            /* ignored */
+          }
+
+          // If we're still here, close was blocked: show the sleep screen.
+          const rendering = Boolean(videoJob);
+          els.sleepText.textContent = !saved
+            ? "Phone storage is full, so the newest words may not be saved. Re-open and delete an old dream."
+            : rendering
+              ? "Safe to lock your screen or swipe home. Your dream video will finish when you re-open the app."
+              : "Safe to lock your screen or swipe home.";
+
+          lastFocus = document.activeElement;
+          if (lastFocus && typeof lastFocus.blur === "function")
+            lastFocus.blur(); // hide the keyboard
+          els.sleepOverlay.hidden = false;
+          document.body.classList.add("sleeping");
+          requestAnimationFrame(() => els.sleepOverlay.classList.add("show"));
+          els.reopenBtn.focus({ preventScroll: true });
+        }
+
+        function reopenEditor() {
+          els.sleepOverlay.classList.remove("show");
+          document.body.classList.remove("sleeping");
+          setTimeout(() => {
+            els.sleepOverlay.hidden = true;
+          }, 300);
+          if (videoJob) holdWake("video");
+          window.scrollTo({ top: 0 });
+          if (
+            lastFocus &&
+            document.contains(lastFocus) &&
+            lastFocus !== document.body
+          ) {
+            lastFocus.focus({ preventScroll: true });
+          } else {
+            els.dictateBtn.focus({ preventScroll: true });
+          }
+        }
+
+        function openSettings() {
+          els.settings.open = true;
+          els.settings.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // =========================================================================
         // Wiring
         // =========================================================================
+
+        els.exitBtn.addEventListener("click", exitApp);
+        els.reopenBtn.addEventListener("click", reopenEditor);
+        els.headerSettingsBtn.addEventListener("click", openSettings);
+        els.sleepOverlay.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") reopenEditor();
+          if (e.key === "Tab") {
+            e.preventDefault();
+            els.reopenBtn.focus();
+          } // keep focus in the dialog
+        });
 
         els.dictateBtn.addEventListener("click", () =>
           voice.listening ? stopDictation() : startDictation(),
@@ -2379,7 +2617,7 @@
           if (document.visibilityState === "hidden") {
             commitPendingInterim();
             saveNow();
-          } else if (wake.reasons.size) {
+          } else if (wake.reasons.size && els.sleepOverlay.hidden) {
             wake.lock = null; // wake locks drop while hidden
             holdWake([...wake.reasons][0]);
           }
