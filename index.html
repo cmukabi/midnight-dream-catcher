@@ -1063,9 +1063,21 @@
             spellcheck="false"
             placeholder="gpt-image-2"
           />
+          <label for="falLlmModel"
+            >fal.ai decoder model (used with a fal key)</label
+          >
+          <input
+            id="falLlmModel"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="google/gemini-2.5-flash"
+          />
           <p class="hint">
-            Without an OpenAI or Anthropic key, 🔮 Decode uses the free offline
-            symbol guide. Anthropic is used first when both are saved.
+            🔮 Decode picks by key: Anthropic (sk-ant-…), then OpenAI (sk-…),
+            then fal.ai (fal_sk_… or KEY_ID:SECRET). With no key, it uses the
+            free offline symbol guide.
           </p>
 
           <button type="button" id="saveSettingsBtn">Save</button>
@@ -1124,6 +1136,7 @@
           anthropicKey: "mdc.anthropicKey.v1",
           openaiTextModel: "mdc.openaiTextModel.v1",
           anthropicModel: "mdc.anthropicModel.v1",
+          falLlmModel: "mdc.falLlmModel.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
           falKey: "mdc.falKey.v1",
           falImageModel: "mdc.falImageModel.v1",
@@ -1185,6 +1198,8 @@
         const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
         const DEFAULT_OPENAI_TEXT_MODEL = "gpt-4o-mini";
         const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
+        const FAL_LLM_ENDPOINT = "https://fal.run/fal-ai/any-llm";
+        const DEFAULT_FAL_LLM_MODEL = "google/gemini-2.5-flash";
         const DECODE_TIMEOUT_MS = 60000;
         const DECODE_MAX_CHARS = 4000;
         const DEFAULT_OPENAI_MODEL = "gpt-image-2"; // dall-e-3 was retired on 2026-05-12
@@ -1251,6 +1266,7 @@
           anthropicKey: $("anthropicKey"),
           openaiTextModel: $("openaiTextModel"),
           anthropicModel: $("anthropicModel"),
+          falLlmModel: $("falLlmModel"),
           clearAnthropicBtn: $("clearAnthropicBtn"),
           decodeBtn: $("decodeBtn"),
           meaningCard: $("meaningCard"),
@@ -2009,7 +2025,12 @@
             .trim()
             .replace(/^Key\s+/i, "");
 
-        const getFalKey = () => readStore(STORAGE.falKey, "") || "";
+        const getFalKey = () => {
+          const saved = readStore(STORAGE.falKey, "") || "";
+          if (saved) return saved;
+          const misplaced = readStore(STORAGE.apiKey, "") || ""; // a fal key saved in the OpenAI box
+          return keyKind(misplaced) === "fal" ? normaliseFalKey(misplaced) : "";
+        };
         /** Accepts "fal-ai/x/y" or a pasted "https://fal.run/fal-ai/x/y" / fal.ai model page URL. */
         const normaliseModelId = (raw) =>
           String(raw || "")
@@ -2031,9 +2052,24 @@
             ? saved
             : DEFAULT_FAL_VIDEO_MODEL;
         };
+        /** Classifies a pasted key by its prefix. */
+        const keyKind = (raw) => {
+          const key = String(raw || "").trim();
+          if (!key) return "";
+          if (key.startsWith("sk-ant-")) return "anthropic";
+          if (key.startsWith("sk-")) return "openai";
+          if (
+            /^fal_sk_/i.test(key) ||
+            /^Key\s+/i.test(key) ||
+            /^[\w-]+:[\w-]+$/.test(key)
+          )
+            return "fal";
+          return "";
+        };
+        // Only genuine OpenAI keys (sk-…, not sk-ant-…) are ever sent to OpenAI.
         const getOpenaiKey = () => {
           const key = readStore(STORAGE.apiKey, "") || "";
-          return key.startsWith("sk-ant-") ? "" : key; // an Anthropic key pasted in the wrong box
+          return keyKind(key) === "openai" ? key : "";
         };
         const getAnthropicKey = () => {
           const saved = readStore(STORAGE.anthropicKey, "") || "";
@@ -2045,6 +2081,8 @@
           readStore(STORAGE.openaiTextModel, "") || DEFAULT_OPENAI_TEXT_MODEL;
         const getAnthropicModel = () =>
           readStore(STORAGE.anthropicModel, "") || DEFAULT_ANTHROPIC_MODEL;
+        const getFalLlmModel = () =>
+          readStore(STORAGE.falLlmModel, "") || DEFAULT_FAL_LLM_MODEL;
         const getOpenaiModel = () =>
           readStore(STORAGE.model, "") || DEFAULT_OPENAI_MODEL;
         const mask = (key) => `••••${key.slice(-4)}`;
@@ -2060,9 +2098,7 @@
             getAnthropicKey()
               ? `Anthropic key saved (${mask(getAnthropicKey())}).`
               : "",
-            getAnthropicKey() || oa
-              ? "🔮 Decode uses AI."
-              : "🔮 Decode uses the offline symbol guide.",
+            `🔮 Decode uses ${decoderProvider() ? decoderProvider().name : "the offline symbol guide"}.`,
           ].filter(Boolean);
           els.keyStatus.textContent = lines.join(" ");
           els.falKey.value = "";
@@ -2085,13 +2121,23 @@
             readStore(STORAGE.openaiTextModel, "") || "";
           els.anthropicModel.value =
             readStore(STORAGE.anthropicModel, "") || "";
+          els.falLlmModel.value = readStore(STORAGE.falLlmModel, "") || "";
         }
 
         function saveSettings() {
-          const fal = normaliseFalKey(els.falKey.value);
+          let fal = normaliseFalKey(els.falKey.value);
           let oa = els.openaiKey.value.trim();
           let ant = els.anthropicKey.value.trim();
           // Route keys pasted into the wrong box by their prefix.
+          let falFromOther = "";
+          if (keyKind(oa) === "fal") {
+            falFromOther = normaliseFalKey(oa);
+            oa = "";
+          }
+          if (keyKind(ant) === "fal") {
+            falFromOther = normaliseFalKey(ant);
+            ant = "";
+          }
           if (oa.startsWith("sk-ant-") && !ant) {
             ant = oa;
             oa = "";
@@ -2121,11 +2167,22 @@
             toast("That OpenAI key has spaces in it. Paste it again.");
             return;
           }
+          if (!fal && falFromOther) fal = falFromOther;
           if (fal) writeStore(STORAGE.falKey, fal);
+          // Clean up a fal key that an earlier version saved in the OpenAI slot.
+          if (keyKind(readStore(STORAGE.apiKey, "")) === "fal") {
+            if (!readStore(STORAGE.falKey, ""))
+              writeStore(
+                STORAGE.falKey,
+                normaliseFalKey(readStore(STORAGE.apiKey, "")),
+              );
+            removeStore(STORAGE.apiKey);
+          }
           if (oa) writeStore(STORAGE.apiKey, oa);
           if (ant) writeStore(STORAGE.anthropicKey, ant);
           writeStore(STORAGE.openaiTextModel, els.openaiTextModel.value.trim());
           writeStore(STORAGE.anthropicModel, els.anthropicModel.value.trim());
+          writeStore(STORAGE.falLlmModel, els.falLlmModel.value.trim());
           writeStore(
             STORAGE.falImageModel,
             normaliseModelId(els.falImageModel.value),
@@ -3618,6 +3675,67 @@
           return json?.choices?.[0]?.message?.content || "";
         }
 
+        /** fal.ai any-llm: { model, prompt, system_prompt } -> { output }. */
+        async function decodeWithFal(key, text, signal) {
+          const model = getFalLlmModel();
+          const response = await fetch(FAL_LLM_ENDPOINT, {
+            method: "POST",
+            signal,
+            headers: falHeaders(key),
+            body: JSON.stringify({
+              model,
+              prompt: `<dream>\n${text}\n</dream>`,
+              system_prompt: DECODER_SYSTEM_PROMPT,
+            }),
+          });
+          if (!response.ok) {
+            const detail = await readFalError(response);
+            if (response.status === 401 || response.status === 403)
+              throw userError(
+                "fal.ai rejected the key. Check it in ⚙️ Settings.",
+              );
+            if (response.status === 422)
+              throw userError(
+                `fal.ai rejected the request${detail ? `: ${detail}` : ""}. Check the fal.ai decoder model in ⚙️ Settings.`,
+              );
+            throw userError(
+              friendlyLlmError("fal.ai", response.status, detail),
+            );
+          }
+          const data = await response.json();
+          if (data?.error)
+            throw userError(
+              `fal.ai: ${typeof data.error === "string" ? data.error : "the model returned an error"}.`,
+            );
+          return data?.output || "";
+        }
+
+        /**
+         * Picks the decoder from the saved keys, by prefix:
+         * Anthropic (sk-ant-…) > OpenAI (sk-…) > fal.ai (fal_sk_… / KEY_ID:SECRET).
+         */
+        function decoderProvider() {
+          const anthropicKey = getAnthropicKey();
+          if (anthropicKey)
+            return {
+              name: "Anthropic",
+              run: (t, sig) => decodeWithAnthropic(anthropicKey, t, sig),
+            };
+          const openaiKey = getOpenaiKey();
+          if (openaiKey)
+            return {
+              name: "OpenAI",
+              run: (t, sig) => decodeWithOpenai(openaiKey, t, sig),
+            };
+          const falKey = getFalKey();
+          if (falKey)
+            return {
+              name: `fal.ai (${getFalLlmModel()})`,
+              run: (t, sig) => decodeWithFal(falKey, t, sig),
+            };
+          return null;
+        }
+
         function friendlyLlmError(provider, status, detail) {
           if (status === 401 || status === 403)
             return `${provider} rejected the API key.`;
@@ -3646,11 +3764,10 @@
           persistDreams();
           const dreamId = dream.id;
           const clipped = text.slice(0, DECODE_MAX_CHARS);
-          const anthropicKey = getAnthropicKey();
-          const openaiKey = getOpenaiKey();
+          const decoder = decoderProvider();
 
-          // Mode B: instant, offline, free (also when only a fal.ai key is saved).
-          if (!anthropicKey && !openaiKey) {
+          // Mode B: instant, offline, free.
+          if (!decoder) {
             saveMeaning(dreamId, {
               mode: "offline",
               text,
@@ -3669,20 +3786,14 @@
             el("p", "meaning-meta", "Reading the symbols in your dream…"),
           );
 
-          const provider = anthropicKey ? "Anthropic" : "OpenAI";
+          const provider = decoder.name;
           const controller = new AbortController();
           const timeout = setTimeout(
             () => controller.abort(),
             DECODE_TIMEOUT_MS,
           );
           try {
-            const raw = anthropicKey
-              ? await decodeWithAnthropic(
-                  anthropicKey,
-                  clipped,
-                  controller.signal,
-                )
-              : await decodeWithOpenai(openaiKey, clipped, controller.signal);
+            const raw = await decoder.run(clipped, controller.signal);
             const parsed = parseDecoderJson(raw);
             if (!parsed)
               throw userError(`${provider} replied in an unexpected format.`);
@@ -3876,7 +3987,7 @@
               el(
                 "p",
                 "hint",
-                "Add an OpenAI or Anthropic key in ⚙️ Settings for a full AI reading.",
+                "Add a fal.ai, OpenAI or Anthropic key in ⚙️ Settings for a full AI reading.",
               ),
             );
           }
