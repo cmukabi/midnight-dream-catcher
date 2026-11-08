@@ -183,6 +183,25 @@
         color: var(--amber-dim);
         margin: 0;
       }
+      .code-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+      .code-row input {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        letter-spacing: 0.08em;
+      }
+      .code-row button {
+        min-width: var(--tap);
+        padding: 0 14px;
+      }
+      .code-row input::placeholder {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui,
+          sans-serif;
+        letter-spacing: normal;
+      }
       .sub-status.ok {
         color: var(--amber-hi);
       }
@@ -1056,6 +1075,25 @@
             spellcheck="false"
             placeholder="you@example.com"
           />
+          <label for="subToken">Access Code</label>
+          <div class="code-row">
+            <input
+              id="subToken"
+              type="password"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              placeholder="Shown after checkout"
+            />
+            <button
+              type="button"
+              id="toggleTokenBtn"
+              aria-pressed="false"
+              aria-label="Show access code"
+            >
+              👁
+            </button>
+          </div>
           <button type="button" id="checkAccessBtn">
             Check / Activate Access
           </button>
@@ -1070,6 +1108,8 @@
           >
           <p class="hint">
             Use the same email at checkout, then tap Check / Activate Access.
+            After checkout this phone activates automatically and saves your
+            Access Code; keep it to sign in on other devices.
           </p>
           <button type="button" id="signOutBtn" hidden>Sign Out</button>
           <p class="hint">
@@ -1266,7 +1306,8 @@
         // ---- Live backend ------------------------------------------------------
         // A deployed Worker lives at https://<worker>.<subdomain>.workers.dev.
         // Developer Override > Proxy URL can replace this without editing code.
-        const PROXY_URL = "https://workers.dev";
+        const PROXY_URL =
+          "https://fragrant-glitter-cd3cdreamcatcher-proxy.cmukabi.workers.dev";
         const STRIPE_CHECKOUT_URL =
           "https://buy.stripe.com/test_5kQ4gz2fzfT0fgNdOW3Ru01";
         const PROXY_IMAGE_TIMEOUT_MS = 120000;
@@ -1399,6 +1440,8 @@
           clearAnthropicBtn: $("clearAnthropicBtn"),
           accountPill: $("accountPill"),
           subEmail: $("subEmail"),
+          subToken: $("subToken"),
+          toggleTokenBtn: $("toggleTokenBtn"),
           checkAccessBtn: $("checkAccessBtn"),
           subStatus: $("subStatus"),
           subscribeBtn: $("subscribeBtn"),
@@ -2367,12 +2410,20 @@
         const isEmail = (v) =>
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
 
-        /** @returns {{email:string, active:boolean, credits:number|null, checkedAt:number}|null} */
+        /** @returns {{email:string, token:string, active:boolean, credits:number|null, checkedAt:number}|null} */
         function getSubscriber() {
           const sub = readStore(STORAGE.subscriber, null);
           return sub && isEmail(sub.email) ? sub : null;
         }
         const getSubscriberEmail = () => getSubscriber()?.email || "";
+        const getSubscriberToken = () => getSubscriber()?.token || "";
+        /** Proxy requests need both the email and its access code. */
+        const hasSubscriberAccess = () =>
+          Boolean(getSubscriberEmail() && getSubscriberToken());
+        const cleanToken = (v) =>
+          String(v || "")
+            .trim()
+            .replace(/\s+/g, "");
 
         function saveSubscriber(patch) {
           const next = { ...(getSubscriber() || {}), ...patch };
@@ -2396,7 +2447,7 @@
           const sub = getSubscriber();
           const pill = els.accountPill;
           pill.classList.remove("pro", "empty");
-          if (sub?.active) {
+          if (sub?.active && sub?.token) {
             const credits = Number.isFinite(sub.credits) ? sub.credits : "—";
             pill.textContent = `✨ Pro: ${credits} Credit${sub.credits === 1 ? "" : "s"}`;
             pill.href = "#settings";
@@ -2420,13 +2471,20 @@
           els.signOutBtn.hidden = !sub;
           if (sub && document.activeElement !== els.subEmail)
             els.subEmail.value = sub.email;
+          if (sub?.token && document.activeElement !== els.subToken)
+            els.subToken.value = sub.token;
 
-          els.subStatus.classList.toggle("ok", Boolean(sub?.active));
+          els.subStatus.classList.toggle(
+            "ok",
+            Boolean(sub?.active && sub?.token),
+          );
           els.subStatus.textContent = !sub
             ? "Not signed in."
-            : sub.active
-              ? `Signed in as ${sub.email} · ${Number.isFinite(sub.credits) ? sub.credits : "unknown"} creations left this month.`
-              : `${sub.email} has no active subscription yet. Subscribe below with this email, then tap Check / Activate Access.`;
+            : !sub.token
+              ? `Enter the Access Code for ${sub.email}, then tap Check / Activate Access.`
+              : sub.active
+                ? `Signed in as ${sub.email} · ${Number.isFinite(sub.credits) ? sub.credits : "unknown"} creations left this month.`
+                : `${sub.email} has no active subscription yet. Subscribe below with this email, then tap Check / Activate Access.`;
         }
 
         function parseStatus(data) {
@@ -2446,14 +2504,43 @@
           return { active: Boolean(active), credits };
         }
 
-        async function checkSubscriberStatus({ email, silent = false } = {}) {
-          const address = String(email || getSubscriberEmail())
+        /**
+         * POST {PROXY_URL}/status with { email, token } or, after Stripe checkout,
+         * { sessionId }. Saves the email, credits and any returned access token.
+         */
+        async function checkSubscriberStatus({
+          email,
+          token,
+          sessionId,
+          silent = false,
+        } = {}) {
+          const address = String(email ?? getSubscriberEmail())
             .trim()
             .toLowerCase();
-          if (!isEmail(address)) {
-            if (!silent) toast("Enter the email you used at checkout.");
-            return null;
+          const code = cleanToken(token ?? getSubscriberToken());
+
+          if (!sessionId) {
+            if (!isEmail(address)) {
+              if (!silent) toast("Enter the email you used at checkout.");
+              return null;
+            }
+            if (!code) {
+              if (!silent) {
+                toast(
+                  "Enter your Access Code. It appears after checkout on the phone you paid from.",
+                  4500,
+                );
+                els.subToken.focus();
+              }
+              return null;
+            }
           }
+
+          const body = {
+            email: isEmail(address) ? address : undefined,
+            token: code || undefined,
+            sessionId: sessionId || undefined,
+          };
           if (!silent) {
             els.checkAccessBtn.disabled = true;
             els.checkAccessBtn.textContent = "Checking…";
@@ -2462,7 +2549,7 @@
             const res = await fetch(`${proxyBase()}/status`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: address }),
+              body: JSON.stringify(body),
             });
             let data = null;
             try {
@@ -2473,35 +2560,76 @@
 
             if (res.ok) {
               const { active, credits } = parseStatus(data);
+              const returnedEmail = isEmail(data?.email)
+                ? String(data.email).trim().toLowerCase()
+                : address;
+              const returnedToken =
+                cleanToken(
+                  data?.token ?? data?.accessCode ?? data?.access_code,
+                ) || code;
+              if (!isEmail(returnedEmail)) {
+                if (!silent)
+                  toast(
+                    "Checkout found, but no email came back. Enter your email and Access Code.",
+                    4500,
+                  );
+                return null;
+              }
               const sub = saveSubscriber({
-                email: address,
+                email: returnedEmail,
+                token: returnedToken,
                 active,
                 credits,
                 checkedAt: Date.now(),
               });
+              if (!silent || sessionId) {
+                toast(
+                  active && returnedToken
+                    ? `${sessionId ? "Welcome to Pro! " : ""}Access active · ${Number.isFinite(credits) ? credits : "?"} credits.`
+                    : "No active subscription found yet.",
+                  4200,
+                );
+              }
+              return sub;
+            }
+            if (res.status === 401) {
               if (!silent)
                 toast(
-                  active
-                    ? `Pro access active · ${Number.isFinite(credits) ? credits : "?"} credits.`
-                    : "No active subscription found for that email yet.",
-                  3800,
+                  "That email and Access Code don’t match. Check both and try again.",
+                  4500,
                 );
-              return sub;
+              if (!sessionId && isEmail(address))
+                saveSubscriber({
+                  email: address,
+                  token: "",
+                  active: false,
+                  checkedAt: Date.now(),
+                });
+              return null;
             }
             if (
               res.status === 403 ||
               res.status === 404 ||
               res.status === 402
             ) {
-              const sub = saveSubscriber({
-                email: address,
-                active: false,
-                credits: 0,
-                checkedAt: Date.now(),
-              });
-              if (!silent)
-                toast("No active subscription found for that email yet.", 3800);
-              return sub;
+              // A checkout lookup that fails must not downgrade access already on this phone.
+              if (!sessionId && isEmail(address))
+                saveSubscriber({
+                  email: address,
+                  token: code,
+                  active: false,
+                  credits: 0,
+                  checkedAt: Date.now(),
+                });
+              if (!silent || sessionId) {
+                toast(
+                  sessionId
+                    ? "We couldn’t confirm that checkout yet. Try Check / Activate Access in a minute."
+                    : "No active subscription found for that email yet.",
+                  4500,
+                );
+              }
+              return null;
             }
             if (!silent)
               toast(
@@ -2512,9 +2640,9 @@
               );
             return null;
           } catch {
-            if (!silent)
+            if (!silent || sessionId)
               toast(
-                "Could not reach the Dream Catcher server. Check your connection and the proxy URL.",
+                "Could not reach the Dream Catcher server. Check your connection.",
                 4500,
               );
             return null;
@@ -2523,6 +2651,29 @@
               els.checkAccessBtn.disabled = false;
               els.checkAccessBtn.textContent = "Check / Activate Access";
             }
+          }
+        }
+
+        /** Stripe's success URL lands on the app with ?session_id=cs_…: activate automatically. */
+        async function activateFromStripeReturn() {
+          const params = new URLSearchParams(location.search);
+          const sessionId = params.get("session_id");
+          if (!sessionId) return;
+          // Remove it from the address bar so a refresh or home-screen launch doesn't replay it.
+          params.delete("session_id");
+          const query = params.toString();
+          history.replaceState(
+            null,
+            "",
+            `${location.pathname}${query ? `?${query}` : ""}${location.hash}`,
+          );
+          if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return;
+          lastStatusCheck = Date.now();
+          const sub = await checkSubscriberStatus({ sessionId });
+          if (sub?.active && sub?.token) {
+            openSettings();
+            els.subStatus.textContent +=
+              " Your Access Code is saved on this phone: tap 👁 to view it for your other devices.";
           }
         }
 
@@ -2536,17 +2687,18 @@
         }
 
         /**
-         * POST {PROXY_URL}/generate { email, endpoint, payload }.
+         * POST {PROXY_URL}/generate { email, token, endpoint, payload }.
          * Accepts the fal result either at the top level or under `result` / `data`.
          */
         async function proxyGenerate(endpoint, payload, signal) {
           const email = getSubscriberEmail();
+          const token = getSubscriberToken();
           let res;
           try {
             res = await fetch(`${proxyBase()}/generate`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, endpoint, payload }),
+              body: JSON.stringify({ email, token, endpoint, payload }),
               signal,
             });
           } catch (err) {
@@ -2582,7 +2734,7 @@
           if (res.status === 401) {
             throw Object.assign(
               userError(
-                "Your subscriber email wasn’t recognised. Check it in ⚙️ Settings.",
+                "Your email and Access Code weren’t accepted. Check both in ⚙️ Settings.",
               ),
               { signIn: true },
             );
@@ -2601,7 +2753,7 @@
 
         /** Where an AI request should go: developer key, subscriber proxy, or nowhere. */
         const routeAi = () =>
-          getFalKey() ? "dev" : getSubscriberEmail() ? "proxy" : null;
+          getFalKey() ? "dev" : hasSubscriberAccess() ? "proxy" : null;
 
         function stripeLink(label = "🔒 Upgrade to Pro (£12/mo)") {
           const a = el("a", "btn-link btn-primary", label);
@@ -2612,7 +2764,11 @@
         }
 
         function signInButton() {
-          const b = el("button", "", "👤 Sign In with Subscriber Email");
+          const b = el(
+            "button",
+            "",
+            "\uD83D\uDC64 Sign In (Email + Access Code)",
+          );
           b.type = "button";
           b.addEventListener("click", () => {
             openSettings();
@@ -2628,7 +2784,7 @@
           notice(area, [
             el("strong", "", `${featureLabel} is a Pro feature.`),
             document.createTextNode(
-              " Sign in with your subscriber email, or upgrade for 25 creations a month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.",
+              " Sign in with your email and Access Code, or upgrade for 25 creations a month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.",
             ),
             actions,
           ]);
@@ -2671,7 +2827,7 @@
         let lastStatusCheck = 0;
         function maybeRefreshStatus() {
           if (
-            !getSubscriberEmail() ||
+            !hasSubscriberAccess() ||
             Date.now() - lastStatusCheck < STATUS_RECHECK_MS
           )
             return;
@@ -2901,8 +3057,7 @@
           const prompt = promptForGeneration();
           const falKey = getFalKey();
           const openaiKey = getOpenaiKey();
-          const useProxy =
-            !falKey && !openaiKey && Boolean(getSubscriberEmail());
+          const useProxy = !falKey && !openaiKey && hasSubscriberAccess();
           if (!falKey && !openaiKey && !useProxy) {
             accessNotice(els.frameArea, "🖼️ Storyboard frames");
             return;
@@ -4328,7 +4483,7 @@
               name: `fal.ai (${getFalLlmModel()})`,
               run: (t, sig) => decodeWithFal(falKey, t, sig),
             };
-          if (getSubscriberEmail())
+          if (hasSubscriberAccess())
             return {
               name: "Dream Catcher Pro",
               run: (t, sig) => decodeViaProxy(t, sig),
@@ -4606,7 +4761,7 @@
                 "Sign in as a Pro subscriber in ⚙️ Settings, or upgrade, for a full AI reading.",
               ),
             );
-            if (!getSubscriberEmail()) body.push(stripeLink());
+            if (!hasSubscriberAccess()) body.push(stripeLink());
           }
           body.push(
             el("p", "hint", "For reflection and creativity, not a diagnosis."),
@@ -4749,7 +4904,7 @@
 
         els.exitBtn.addEventListener("click", exitApp);
         els.accountPill.addEventListener("click", (event) => {
-          if (getSubscriber()?.active) {
+          if (getSubscriber()?.active && hasSubscriberAccess()) {
             event.preventDefault();
             openSettings();
           } else {
@@ -4759,12 +4914,26 @@
         els.subscribeBtn.addEventListener("click", () => {
           els.subscribeBtn.href = checkoutUrl();
         });
-        els.checkAccessBtn.addEventListener("click", () =>
-          checkSubscriberStatus({ email: els.subEmail.value }),
-        );
+        const checkFromForm = () =>
+          checkSubscriberStatus({
+            email: els.subEmail.value,
+            token: els.subToken.value,
+          });
+        els.checkAccessBtn.addEventListener("click", checkFromForm);
         els.subEmail.addEventListener("keydown", (e) => {
-          if (e.key === "Enter")
-            checkSubscriberStatus({ email: els.subEmail.value });
+          if (e.key === "Enter") els.subToken.focus();
+        });
+        els.subToken.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") checkFromForm();
+        });
+        els.toggleTokenBtn.addEventListener("click", () => {
+          const show = els.subToken.type === "password";
+          els.subToken.type = show ? "text" : "password";
+          els.toggleTokenBtn.setAttribute("aria-pressed", String(show));
+          els.toggleTokenBtn.setAttribute(
+            "aria-label",
+            show ? "Hide access code" : "Show access code",
+          );
         });
         els.subEmail.addEventListener("input", () => {
           if (!getSubscriber()) els.subscribeBtn.href = checkoutUrl();
@@ -4772,6 +4941,8 @@
         els.signOutBtn.addEventListener("click", () => {
           removeStore(STORAGE.subscriber);
           els.subEmail.value = "";
+          els.subToken.value = "";
+          els.subToken.type = "password";
           renderAccount();
           toast("Signed out on this phone.");
         });
@@ -4898,7 +5069,9 @@
         // Initial render
         loadIntoEditor(currentDream());
         renderKeyStatus();
-        maybeRefreshStatus();
+        if (new URLSearchParams(location.search).has("session_id"))
+          activateFromStripeReturn();
+        else maybeRefreshStatus();
         tickClock();
         setInterval(tickClock, 15000);
         resumePendingVideo();
