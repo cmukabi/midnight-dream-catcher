@@ -715,7 +715,7 @@
             spellcheck="false"
             placeholder="KEY_ID:KEY_SECRET"
           />
-          <label for="falImageModel">Frame model</label>
+          <label for="falImageModel">Image Model ID</label>
           <input
             id="falImageModel"
             type="text"
@@ -724,15 +724,19 @@
             spellcheck="false"
             placeholder="fal-ai/flux/schnell"
           />
-          <label for="falVideoModel">Video model</label>
+          <label for="falVideoModel">Video Model ID</label>
           <input
             id="falVideoModel"
             type="text"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="fal-ai/luma-dream-machine/ray-2"
+            placeholder="fal-ai/minimax/video-01"
           />
+          <p class="hint">
+            Leave blank for the defaults. Paste any fal.ai text-to-video model
+            ID to switch, e.g. fal-ai/kling-video/v1.6/standard/text-to-video.
+          </p>
 
           <p class="subhead">OpenAI (optional backup for frames)</p>
           <label for="openaiKey">OpenAI API key</label>
@@ -793,10 +797,14 @@
         const FAL_SYNC_BASE = "https://fal.run/";
         const FAL_QUEUE_BASE = "https://queue.fal.run/";
         const DEFAULT_FAL_IMAGE_MODEL = "fal-ai/flux/schnell";
-        const DEFAULT_FAL_VIDEO_MODEL = "fal-ai/luma-dream-machine/ray-2";
+        const DEFAULT_FAL_VIDEO_MODEL = "fal-ai/minimax/video-01";
+        const RETIRED_FAL_VIDEO_MODELS = [
+          "fal-ai/luma-dream-machine/ray-2",
+          "fal-ai/luma-dream-machine",
+        ];
         const VIDEO_POLL_MS = 3000;
         const VIDEO_MAX_WAIT_MS = 15 * 60 * 1000;
-        const VIDEO_TYPICAL_MS = 90 * 1000; // shapes the progress bar curve
+        const VIDEO_TYPICAL_MS = 180 * 1000; // shapes the progress bar curve (MiniMax ~3-5 min)
         const PENDING_RESUME_MAX_AGE_MS = 60 * 60 * 1000;
 
         const OPENAI_ENDPOINT = "https://api.openai.com/v1/images/generations";
@@ -1593,10 +1601,24 @@
             .replace(/^Key\s+/i, "");
 
         const getFalKey = () => readStore(STORAGE.falKey, "") || "";
+        /** Accepts "fal-ai/x/y" or a pasted "https://fal.run/fal-ai/x/y" / fal.ai model page URL. */
+        const normaliseModelId = (raw) =>
+          String(raw || "")
+            .trim()
+            .replace(/^https?:\/\/(?:queue\.)?fal\.run\//i, "")
+            .replace(/^https?:\/\/fal\.ai\/models\//i, "")
+            .replace(/\/(?:api|playground)\/?$/i, "")
+            .replace(/^\/+|\/+$/g, "");
+
         const getFalImageModel = () =>
-          readStore(STORAGE.falImageModel, "") || DEFAULT_FAL_IMAGE_MODEL;
-        const getFalVideoModel = () =>
-          readStore(STORAGE.falVideoModel, "") || DEFAULT_FAL_VIDEO_MODEL;
+          normaliseModelId(readStore(STORAGE.falImageModel, "")) ||
+          DEFAULT_FAL_IMAGE_MODEL;
+        const getFalVideoModel = () => {
+          const saved = normaliseModelId(readStore(STORAGE.falVideoModel, ""));
+          return saved && !RETIRED_FAL_VIDEO_MODELS.includes(saved)
+            ? saved
+            : DEFAULT_FAL_VIDEO_MODEL;
+        };
         const getOpenaiKey = () => readStore(STORAGE.apiKey, "") || "";
         const getOpenaiModel = () =>
           readStore(STORAGE.model, "") || DEFAULT_OPENAI_MODEL;
@@ -1607,7 +1629,7 @@
           const oa = getOpenaiKey();
           const lines = [
             fal
-              ? `fal.ai key saved (${mask(fal)}).`
+              ? `fal.ai key saved (${mask(fal)}). Image: ${getFalImageModel()}. Video: ${getFalVideoModel()}.`
               : "No fal.ai key: videos are off.",
             oa ? `OpenAI key saved (${mask(oa)}).` : "",
           ].filter(Boolean);
@@ -1615,7 +1637,14 @@
           els.falKey.value = "";
           els.openaiKey.value = "";
           els.falImageModel.value = readStore(STORAGE.falImageModel, "") || "";
-          els.falVideoModel.value = readStore(STORAGE.falVideoModel, "") || "";
+          const savedVideo = normaliseModelId(
+            readStore(STORAGE.falVideoModel, ""),
+          );
+          els.falVideoModel.value = RETIRED_FAL_VIDEO_MODELS.includes(
+            savedVideo,
+          )
+            ? ""
+            : savedVideo;
           els.openaiModel.value = readStore(STORAGE.model, "") || "";
         }
 
@@ -1635,8 +1664,14 @@
           }
           if (fal) writeStore(STORAGE.falKey, fal);
           if (oa) writeStore(STORAGE.apiKey, oa);
-          writeStore(STORAGE.falImageModel, els.falImageModel.value.trim());
-          writeStore(STORAGE.falVideoModel, els.falVideoModel.value.trim());
+          writeStore(
+            STORAGE.falImageModel,
+            normaliseModelId(els.falImageModel.value),
+          );
+          writeStore(
+            STORAGE.falVideoModel,
+            normaliseModelId(els.falVideoModel.value),
+          );
           writeStore(STORAGE.model, els.openaiModel.value.trim());
           renderKeyStatus();
           toast(fal || oa ? "Keys saved on this phone." : "Settings saved.");
@@ -1711,7 +1746,7 @@
               ? `fal.ai refused the request: ${detail}`
               : "fal.ai refused the request. Your balance may be empty.";
           if (status === 404)
-            return `fal.ai can't find the model "${model}". Check the model name in ⚙️ Settings.`;
+            return `fal.ai can't find the model "${model}". Check the Model ID in ⚙️ Settings, or leave it blank for the default.`;
           if (status === 422)
             return detail
               ? `fal.ai rejected the request: ${detail}`
@@ -1776,12 +1811,9 @@
               signal,
             });
 
-          let response = await send({
-            prompt,
-            image_size: "landscape_16_9",
-            num_images: 1,
-          });
-          if (response.status === 422) response = await send({ prompt }); // model with a different input schema
+          // { prompt } plus a landscape hint; retry with plain { prompt } if a model rejects the hint.
+          let response = await send({ prompt, image_size: "landscape_16_9" });
+          if (response.status === 422) response = await send({ prompt });
           if (!response.ok)
             throw userError(
               friendlyFalError(
@@ -2017,12 +2049,8 @@
               body: JSON.stringify(body),
             });
 
-          let response = await send({
-            prompt,
-            aspect_ratio: "16:9",
-            duration: "5s",
-          });
-          if (response.status === 422) response = await send({ prompt }); // older model input schemas
+          // Plain { prompt } works across fal.ai text-to-video models.
+          const response = await send({ prompt });
           if (!response.ok)
             throw userError(
               friendlyFalError(
@@ -2124,17 +2152,18 @@
                   `${pending.statusUrl}${pending.statusUrl.includes("?") ? "&" : "?"}logs=0`,
                   { headers: falHeaders(key) },
                 );
-                if (
-                  res.status === 401 ||
-                  res.status === 403 ||
-                  res.status === 404
-                ) {
+                if (res.status === 401 || res.status === 403) {
                   throw userError(
                     friendlyFalError(
                       res.status,
                       await readFalError(res),
                       getFalVideoModel(),
                     ),
+                  );
+                }
+                if (res.status === 404 || res.status === 405) {
+                  throw userError(
+                    "fal.ai no longer recognises this render (it may have expired). Generate the video again.",
                   );
                 }
                 if (res.ok) status = await res.json();
@@ -2157,14 +2186,14 @@
                 const res = await fetch(pending.responseUrl, {
                   headers: falHeaders(key),
                 });
-                if (!res.ok)
+                if (!res.ok) {
+                  const detail = await readFalError(res);
                   throw userError(
-                    friendlyFalError(
-                      res.status,
-                      await readFalError(res),
-                      getFalVideoModel(),
-                    ),
+                    res.status === 404
+                      ? "fal.ai finished but the result has expired. Generate the video again."
+                      : `fal.ai could not return the video${detail ? `: ${detail}` : ` (${res.status})`}.`,
                   );
+                }
                 const json = await res.json();
                 const url =
                   json?.video?.url ||
