@@ -528,6 +528,28 @@
         align-self: flex-start;
       }
 
+      .media-links {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .media-links .btn-link:only-child {
+        grid-column: 1 / -1;
+      }
+      .btn-link {
+        font-size: 15px;
+        padding: 0 10px;
+        text-align: center;
+      }
+      .narration-status {
+        font-size: 14px;
+        color: var(--amber-dim);
+        margin: 0;
+      }
+      .narration-status.on {
+        color: var(--amber);
+      }
+
       /* Saved dreams ----------------------------------------------------------- */
       .list {
         display: flex;
@@ -761,6 +783,16 @@
               <option value="noir">Noir Black &amp; White</option>
             </select>
 
+            <label for="narratorVoice">🎙️ Narrator Voice</label>
+            <select id="narratorVoice">
+              <option value="storyteller">
+                Mysterious Storyteller (Deep Male)
+              </option>
+              <option value="whisper">Dreamy Whisper (Soft Female)</option>
+              <option value="noir">Noir Detective (Gritty)</option>
+              <option value="device">Device Voice (Free Offline)</option>
+            </select>
+
             <label for="masterPrompt">Master Director Prompt</label>
             <textarea
               id="masterPrompt"
@@ -845,9 +877,19 @@
             spellcheck="false"
             placeholder="fal-ai/minimax/video-01"
           />
+          <label for="falTtsModel">Narration Model ID</label>
+          <input
+            id="falTtsModel"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="fal-ai/kokoro/american-english"
+          />
           <p class="hint">
-            Leave blank for the defaults. Paste any fal.ai text-to-video model
-            ID to switch, e.g. fal-ai/kling-video/v1.6/standard/text-to-video.
+            Leave blank for the defaults. Paste any fal.ai model ID to switch,
+            e.g. fal-ai/kling-video/v1.6/standard/text-to-video. Narrator voices
+            are tuned for the default Kokoro model.
           </p>
 
           <p class="subhead">OpenAI (optional backup for frames)</p>
@@ -924,12 +966,48 @@
           falKey: "mdc.falKey.v1",
           falImageModel: "mdc.falImageModel.v1",
           falVideoModel: "mdc.falVideoModel.v1",
+          falTtsModel: "mdc.falTtsModel.v1",
         };
 
         const FAL_SYNC_BASE = "https://fal.run/";
         const FAL_QUEUE_BASE = "https://queue.fal.run/";
         const DEFAULT_FAL_IMAGE_MODEL = "fal-ai/flux/schnell";
         const DEFAULT_FAL_VIDEO_MODEL = "fal-ai/minimax/video-01";
+        const DEFAULT_FAL_TTS_MODEL = "fal-ai/kokoro/american-english";
+        const NARRATION_MAX_CHARS = 2000;
+        const TTS_TIMEOUT_MS = 90000;
+
+        /** Narrator presets: Kokoro voice IDs + matching offline speech settings. */
+        const NARRATORS = {
+          storyteller: {
+            label: "Mysterious Storyteller",
+            voice: "am_onyx",
+            speed: 0.92,
+            deviceRate: 0.88,
+            devicePitch: 0.8,
+          },
+          whisper: {
+            label: "Dreamy Whisper",
+            voice: "af_nicole",
+            speed: 0.95,
+            deviceRate: 0.9,
+            devicePitch: 1.1,
+          },
+          noir: {
+            label: "Noir Detective",
+            voice: "am_fenrir",
+            speed: 0.95,
+            deviceRate: 0.95,
+            devicePitch: 0.7,
+          },
+          device: {
+            label: "Device Voice",
+            voice: null,
+            speed: 1,
+            deviceRate: 0.92,
+            devicePitch: 1,
+          },
+        };
         const RETIRED_FAL_VIDEO_MODELS = [
           "fal-ai/luma-dream-machine/ray-2",
           "fal-ai/luma-dream-machine",
@@ -999,6 +1077,8 @@
           falKey: $("falKey"),
           falImageModel: $("falImageModel"),
           falVideoModel: $("falVideoModel"),
+          falTtsModel: $("falTtsModel"),
+          narratorVoice: $("narratorVoice"),
           openaiKey: $("openaiKey"),
           openaiModel: $("openaiModel"),
           saveSettingsBtn: $("saveSettingsBtn"),
@@ -1275,6 +1355,7 @@
           left: "",
           right: "",
           style: "cinematic",
+          voice: "storyteller",
           prompt: "",
           promptEdited: false,
         });
@@ -1288,6 +1369,7 @@
             !d.left &&
             !d.right &&
             d.style === "cinematic" &&
+            (d.voice || "storyteller") === "storyteller" &&
             !d.promptEdited
           );
         }
@@ -1354,6 +1436,9 @@
           els.visualStyle.value = STYLE_LINES[director.style]
             ? director.style
             : "cinematic";
+          els.narratorVoice.value = NARRATORS[director.voice]
+            ? director.voice
+            : "storyteller";
           if (director.promptEdited) els.masterPrompt.value = director.prompt;
           refreshPrompt();
           renderPromptStatus();
@@ -1430,6 +1515,7 @@
             }
             const badges = [];
             if (dream.video) badges.push("🎬 Dream video");
+            if (dream.video && dream.narration) badges.push("🎙️ Narrated");
             if (dream.pendingVideo) badges.push("⏳ Video rendering");
             if (badges.length)
               item.append(el("div", "entry-badges", badges.join(" · ")));
@@ -1486,6 +1572,7 @@
           const image = dream && (sessionImages.get(dream.id) || dream.image);
           if (image) renderFrame(image);
           if (dream?.video?.url) renderVideo(dream.video.url);
+          else detachNarration();
 
           const jobHere = videoJob && videoJob.dreamId === currentId;
           els.progress.hidden = !(
@@ -1695,6 +1782,7 @@
             return;
           }
           if (voice.listening) stopDictation(); // don't transcribe our own voice
+          for (const v of document.querySelectorAll("video")) v.pause(); // stops video narration too
 
           speechSynthesis.cancel();
           const session = ++reader.session;
@@ -1754,6 +1842,9 @@
         const getFalImageModel = () =>
           normaliseModelId(readStore(STORAGE.falImageModel, "")) ||
           DEFAULT_FAL_IMAGE_MODEL;
+        const getFalTtsModel = () =>
+          normaliseModelId(readStore(STORAGE.falTtsModel, "")) ||
+          DEFAULT_FAL_TTS_MODEL;
         const getFalVideoModel = () => {
           const saved = normaliseModelId(readStore(STORAGE.falVideoModel, ""));
           return saved && !RETIRED_FAL_VIDEO_MODELS.includes(saved)
@@ -1786,15 +1877,19 @@
           )
             ? ""
             : savedVideo;
+          els.falTtsModel.value = normaliseModelId(
+            readStore(STORAGE.falTtsModel, ""),
+          );
           els.openaiModel.value = readStore(STORAGE.model, "") || "";
         }
 
         function saveSettings() {
           const fal = normaliseFalKey(els.falKey.value);
           const oa = els.openaiKey.value.trim();
-          if (fal && (/\s/.test(fal) || !fal.includes(":"))) {
+          // fal keys come as "KEY_ID:KEY_SECRET" or a single "fal_sk_…" token.
+          if (fal && (/\s/.test(fal) || fal.length < 16)) {
             toast(
-              "fal.ai keys look like KEY_ID:KEY_SECRET. Paste it again.",
+              "That fal.ai key looks incomplete. Copy it again from fal.ai/dashboard/keys.",
               4000,
             );
             return;
@@ -1812,6 +1907,10 @@
           writeStore(
             STORAGE.falVideoModel,
             normaliseModelId(els.falVideoModel.value),
+          );
+          writeStore(
+            STORAGE.falTtsModel,
+            normaliseModelId(els.falTtsModel.value),
           );
           writeStore(STORAGE.model, els.openaiModel.value.trim());
           renderKeyStatus();
@@ -1881,7 +1980,7 @@
 
         function friendlyFalError(status, detail, model) {
           if (status === 401)
-            return "fal.ai rejected the key. Check it in ⚙️ Settings (format KEY_ID:KEY_SECRET).";
+            return "fal.ai rejected the key. Check it in ⚙️ Settings.";
           if (status === 403)
             return detail
               ? `fal.ai refused the request: ${detail}`
@@ -2088,9 +2187,59 @@
         // Generation: 5s dream video (fal.ai queue + polling)
         // =========================================================================
 
-        const videoBlobs = new Map(); // url -> Blob, prefetched so Share works instantly
+        const mediaBlobs = new Map(); // url -> Blob, prefetched so Share works instantly
 
+        function mediaLink(url, label, filename) {
+          const link = el("a", "btn-link", label);
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.download = filename;
+          link.addEventListener("click", (event) =>
+            shareMedia(url, filename, event),
+          );
+          prefetchMedia(url);
+          return link;
+        }
+
+        function prefetchMedia(url) {
+          if (!navigator.canShare || mediaBlobs.has(url)) return;
+          mediaBlobs.set(url, null);
+          fetch(url)
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((blob) => {
+              if (blob) mediaBlobs.set(url, blob);
+              else mediaBlobs.delete(url);
+            })
+            .catch(() => mediaBlobs.delete(url));
+        }
+
+        /**
+         * Uses the phone's share sheet (Save Video, Files, Messages…) when the file
+         * is ready; otherwise the link opens the file so it can be saved from there.
+         */
+        function shareMedia(url, filename, event) {
+          const blob = mediaBlobs.get(url);
+          if (!blob || !navigator.canShare) return; // default link behaviour
+          const file = new File([blob], filename, { type: blob.type || "" });
+          if (!navigator.canShare({ files: [file] })) return;
+          event.preventDefault();
+          navigator.share({ files: [file], title: "My dream" }).catch((err) => {
+            if (err?.name !== "AbortError")
+              window.open(url, "_blank", "noopener");
+          });
+        }
+
+        function audioExtension(url) {
+          const match = /\.(mp3|wav|ogg|m4a|aac|flac)(?:[?#]|$)/i.exec(url);
+          return match ? match[1].toLowerCase() : "wav";
+        }
+
+        /** Video player + downloads + narration controls for the open dream. */
         function renderVideo(url) {
+          detachNarration();
+          const dream = currentDream();
+
           const video = el("video");
           video.src = url;
           video.controls = true;
@@ -2101,6 +2250,7 @@
           video.addEventListener(
             "error",
             () => {
+              detachNarration();
               notice(els.videoArea, [
                 document.createTextNode(
                   "This video link has expired or can’t be played. Generate it again, and save it to your phone soon after.",
@@ -2110,45 +2260,361 @@
             { once: true },
           );
 
-          const link = el("a", "btn-link", "⬇️ Save / Share Video");
-          link.href = url;
-          link.target = "_blank";
-          link.rel = "noopener";
-          link.download = "dream-video.mp4";
-          link.addEventListener("click", (event) => shareVideo(url, event));
+          const links = el("div", "media-links");
+          links.append(
+            mediaLink(url, "⬇️ Save / Share Video", "dream-video.mp4"),
+          );
+          const narration = dream?.narration;
+          if (narration?.kind === "ai" && narration.audioUrl) {
+            links.append(
+              mediaLink(
+                narration.audioUrl,
+                "⬇️ Download Audio",
+                `dream-narration.${audioExtension(narration.audioUrl)}`,
+              ),
+            );
+          }
 
-          els.videoArea.replaceChildren(video, link);
-          prefetchVideo(url);
+          const narrateBtn = el(
+            "button",
+            "",
+            narration ? "🎙️ Re-record Narration" : "🎙️ Add Voice Narration",
+          );
+          narrateBtn.type = "button";
+          narrateBtn.id = "narrateBtn";
+          narrateBtn.addEventListener("click", () => addNarration(narrateBtn));
+
+          const status = el("p", "narration-status");
+          status.id = "narrationStatus";
+          status.setAttribute("aria-live", "polite");
+
+          els.videoArea.replaceChildren(video, narrateBtn, links, status);
+          if (narration) attachNarration(video, narration, dream.text, status);
         }
 
-        function prefetchVideo(url) {
-          if (!navigator.canShare || videoBlobs.has(url)) return;
-          videoBlobs.set(url, null);
-          fetch(url)
-            .then((r) => (r.ok ? r.blob() : null))
-            .then((blob) => {
-              if (blob) videoBlobs.set(url, blob);
-              else videoBlobs.delete(url);
-            })
-            .catch(() => videoBlobs.delete(url));
+        // =========================================================================
+        // Narration: AI voice (fal.ai TTS) or device voice, synced to the video
+        // =========================================================================
+
+        let narrationSync = null; // { detach() }
+
+        function detachNarration() {
+          narrationSync?.detach();
+          narrationSync = null;
+        }
+
+        function narrationText(dream) {
+          const text = (dream?.text || els.dreamText.value)
+            .trim()
+            .replace(/\s+/g, " ");
+          return text.length > NARRATION_MAX_CHARS
+            ? `${text.slice(0, NARRATION_MAX_CHARS).replace(/\s+\S*$/, "")}…`
+            : text;
+        }
+
+        async function requestTts(key, text, narrator, signal) {
+          const model = getFalTtsModel();
+          const send = (body) =>
+            fetch(FAL_SYNC_BASE + model, {
+              method: "POST",
+              headers: falHeaders(key),
+              body: JSON.stringify(body),
+              signal,
+            });
+
+          let response = await send({
+            prompt: text,
+            voice: narrator.voice,
+            speed: narrator.speed,
+          });
+          if (response.status === 422)
+            response = await send({ prompt: text, voice: narrator.voice });
+          if (response.status === 422) response = await send({ prompt: text }); // model without voice IDs
+          if (!response.ok)
+            throw userError(
+              friendlyFalError(
+                response.status,
+                await readFalError(response),
+                model,
+              ),
+            );
+
+          const json = await response.json();
+          const url =
+            json?.audio?.url ||
+            json?.audio_url?.url ||
+            json?.audio_url ||
+            json?.audio_file?.url;
+          if (!url || typeof url !== "string")
+            throw userError("fal.ai returned no audio.");
+          return url;
+        }
+
+        async function addNarration(button) {
+          const dream = currentDream();
+          if (!dream?.video?.url) return;
+          saveNow();
+          const text = narrationText(dream);
+          if (!text) {
+            toast(
+              "Dictate or type the dream first so there is something to narrate.",
+            );
+            return;
+          }
+
+          const narratorId = NARRATORS[director.voice]
+            ? director.voice
+            : "storyteller";
+          const narrator = NARRATORS[narratorId];
+          const key = getFalKey();
+          const dreamId = dream.id;
+
+          // Free path: device speech, synced to play/pause.
+          if (narratorId === "device" || !key) {
+            dream.narration = { kind: "device", voice: narratorId };
+            persistDreams();
+            renderVideo(dream.video.url);
+            renderList();
+            toast(
+              key
+                ? "Device voice ready. Press play."
+                : "No fal.ai key saved, so your device voice will narrate. Press play.",
+              3800,
+            );
+            return;
+          }
+
+          button.disabled = true;
+          button.textContent = "🎙️ Recording narration…";
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
+          try {
+            const audioUrl = await requestTts(
+              key,
+              text,
+              narrator,
+              controller.signal,
+            );
+            const target = findDream(dreamId);
+            if (!target) return;
+            target.narration = { kind: "ai", voice: narratorId, audioUrl };
+            persistDreams();
+            if (currentId === dreamId) renderVideo(target.video.url);
+            renderList();
+            toast(`${narrator.label} narration synced. Press play.`, 3500);
+          } catch (err) {
+            const reason = err?.handled
+              ? err.message
+              : err?.name === "AbortError"
+                ? "The narration took too long."
+                : "Could not reach fal.ai.";
+            const target = findDream(dreamId);
+            if (target) {
+              target.narration = { kind: "device", voice: narratorId };
+              persistDreams();
+              if (currentId === dreamId) renderVideo(target.video.url);
+              renderList();
+            }
+            const status = document.getElementById("narrationStatus");
+            if (status)
+              status.textContent = `${reason} Your device voice will narrate instead.`;
+          } finally {
+            clearTimeout(timeout);
+            if (button.isConnected) {
+              button.disabled = false;
+              button.textContent = "🎙️ Re-record Narration";
+            }
+          }
+        }
+
+        function attachNarration(video, narration, text, status) {
+          const sync =
+            narration.kind === "ai" && narration.audioUrl
+              ? syncAudioToVideo(video, narration.audioUrl, status)
+              : syncDeviceVoiceToVideo(
+                  video,
+                  narrationText({ text }),
+                  NARRATORS[narration.voice] || NARRATORS.device,
+                  status,
+                );
+          narrationSync = sync;
         }
 
         /**
-         * Uses the phone's share sheet (Save Video, Messages, etc.) when the file
-         * is ready; otherwise the link opens the MP4 so it can be saved from there.
+         * Tracks real user seeks vs the automatic jump back to 0:00 when a looping
+         * video wraps around, so narration isn't restarted every few seconds.
          */
-        function shareVideo(url, event) {
-          const blob = videoBlobs.get(url);
-          if (!blob || !navigator.canShare) return; // default link behaviour
-          const file = new File([blob], "dream-video.mp4", {
-            type: blob.type || "video/mp4",
+        function loopAwareSeek(video, onUserSeek) {
+          // Chrome fires a timeupdate at 0:00 *between* seeking and seeked on a
+          // loop, so the pre-seek position is captured when seeking starts.
+          let lastTime = 0;
+          let seekFrom = 0;
+          const onTime = () => {
+            if (!video.seeking) lastTime = video.currentTime;
+          };
+          const onSeeking = () => {
+            seekFrom = lastTime;
+          };
+          const onSeeked = () => {
+            const t = video.currentTime;
+            const d = video.duration || 0;
+            const wrapped =
+              video.loop && t < 0.6 && d > 0 && seekFrom > d - 0.8;
+            lastTime = t;
+            if (!wrapped) onUserSeek(t, d);
+          };
+          video.addEventListener("timeupdate", onTime);
+          video.addEventListener("seeking", onSeeking);
+          video.addEventListener("seeked", onSeeked);
+          return () => {
+            video.removeEventListener("timeupdate", onTime);
+            video.removeEventListener("seeking", onSeeking);
+            video.removeEventListener("seeked", onSeeked);
+          };
+        }
+
+        /** Hidden <audio> kept in lockstep with the video's play / pause / seek. */
+        function syncAudioToVideo(video, audioUrl, status) {
+          const audio = el("audio");
+          audio.src = audioUrl;
+          audio.preload = "auto";
+          audio.hidden = true;
+          audio.setAttribute("aria-hidden", "true");
+          video.after(audio);
+          status.textContent =
+            "🎙️ AI narration attached. Press play on the video.";
+          status.classList.add("on");
+
+          const narrationIsLonger = () =>
+            (audio.duration || 0) > (video.duration || 0) + 0.25;
+
+          const onPlay = () => {
+            if (
+              audio.ended ||
+              (audio.duration && audio.currentTime >= audio.duration - 0.05)
+            )
+              audio.currentTime = 0;
+            audio.playbackRate = video.playbackRate;
+            audio.play().catch(() => {
+              status.textContent = "Tap play again to hear the narration.";
+            });
+          };
+          const onPause = () => audio.pause();
+          const onRate = () => {
+            audio.playbackRate = video.playbackRate;
+          };
+          const onAudioEnded = () => {
+            // Narration longer than the clip: the clip loops underneath, then stops with it.
+            if (narrationIsLonger()) video.pause();
+          };
+          const offSeek = loopAwareSeek(video, (t, d) => {
+            if (!audio.duration || !d) return;
+            if (!narrationIsLonger()) {
+              audio.currentTime = Math.min(t, audio.duration);
+            } else {
+              // Keep the same position within the current loop of the clip.
+              const loop = Math.floor(audio.currentTime / d);
+              audio.currentTime = Math.min(
+                loop * d + t,
+                Math.max(0, audio.duration - 0.05),
+              );
+            }
           });
-          if (!navigator.canShare({ files: [file] })) return;
-          event.preventDefault();
-          navigator.share({ files: [file], title: "My dream" }).catch((err) => {
-            if (err?.name !== "AbortError")
-              window.open(url, "_blank", "noopener");
+          const onAudioError = () => {
+            status.textContent =
+              "The narration link has expired. Tap Re-record Narration.";
+            status.classList.remove("on");
+          };
+
+          video.addEventListener("play", onPlay);
+          video.addEventListener("pause", onPause);
+          video.addEventListener("ratechange", onRate);
+          audio.addEventListener("ended", onAudioEnded);
+          audio.addEventListener("error", onAudioError);
+
+          return {
+            detach() {
+              video.removeEventListener("play", onPlay);
+              video.removeEventListener("pause", onPause);
+              video.removeEventListener("ratechange", onRate);
+              offSeek();
+              audio.pause();
+              audio.removeAttribute("src");
+              audio.remove();
+            },
+          };
+        }
+
+        /**
+         * Device speech synced to the video. speechSynthesis can't seek or pause
+         * reliably on phones, so it stops on pause and resumes from the sentence
+         * it was on.
+         */
+        function syncDeviceVoiceToVideo(video, text, narrator, status) {
+          const chunks = chunkForSpeech(text);
+          const supported = "speechSynthesis" in window;
+          status.textContent = supported
+            ? "🎙️ Device voice attached. Press play on the video."
+            : "This browser has no speech voice, so the video will play silently.";
+          status.classList.toggle("on", supported);
+          if (!supported || chunks.length === 0) return { detach() {} };
+
+          let index = 0;
+          let session = 0;
+          let finished = false;
+
+          const speakFrom = (start) => {
+            speechSynthesis.cancel();
+            const mine = ++session;
+            finished = false;
+            for (let i = start; i < chunks.length; i += 1) {
+              const u = new SpeechSynthesisUtterance(chunks[i]);
+              u.lang = navigator.language || "en-US";
+              u.rate = narrator.deviceRate;
+              u.pitch = narrator.devicePitch;
+              u.volume = 0.85;
+              u.onstart = () => {
+                if (mine === session) index = i;
+              };
+              if (i === chunks.length - 1) {
+                u.onend = () => {
+                  if (mine !== session) return;
+                  finished = true;
+                  index = 0;
+                  video.pause();
+                };
+              }
+              speechSynthesis.speak(u);
+            }
+          };
+          const stop = () => {
+            session += 1;
+            speechSynthesis.cancel();
+          };
+
+          const onPlay = () => {
+            stopReading();
+            speakFrom(finished ? 0 : index);
+          };
+          const onPause = () => stop();
+          const offSeek = loopAwareSeek(video, (t) => {
+            if (t < 0.6) {
+              index = 0;
+              finished = false;
+              if (!video.paused) speakFrom(0);
+            }
           });
+
+          video.addEventListener("play", onPlay);
+          video.addEventListener("pause", onPause);
+          return {
+            detach() {
+              video.removeEventListener("play", onPlay);
+              video.removeEventListener("pause", onPause);
+              offSeek();
+              stop();
+            },
+          };
         }
 
         function videoProgress(status, startedAt) {
@@ -2359,6 +2825,7 @@
           const dream = findDream(dreamId);
           if (dream) {
             dream.video = { url, createdAt: Date.now() };
+            delete dream.narration; // narration belonged to the previous clip
             delete dream.pendingVideo;
             persistDreams();
           }
@@ -2580,6 +3047,10 @@
         els.visualStyle.addEventListener("change", () => {
           director.style = els.visualStyle.value;
           onDirectorChange();
+        });
+        els.narratorVoice.addEventListener("change", () => {
+          director.voice = els.narratorVoice.value;
+          scheduleSave();
         });
         els.masterPrompt.addEventListener("input", () => {
           director.prompt = els.masterPrompt.value;
