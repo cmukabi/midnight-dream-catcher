@@ -93,19 +93,30 @@
       }
       .brand {
         display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .brand-logo {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        flex: 0 0 auto;
+        opacity: 0.9;
+      }
+      .brand-text {
+        display: flex;
         flex-direction: column;
         min-width: 0;
       }
       h1 {
         margin: 0;
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 1.25;
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--amber-dim);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
       .clock {
         font-size: 14px;
@@ -215,6 +226,186 @@
       }
       .sub-status.ok {
         color: var(--amber-hi);
+      }
+
+      /* Landing ------------------------------------------------------------------ */
+      .trial-note {
+        margin: -8px 0 0;
+        text-align: center;
+        font-size: 13px;
+        color: var(--amber-dim);
+        min-height: 0;
+      }
+      .trial-note:empty {
+        display: none;
+      }
+      .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 22px 0 6px;
+        text-align: center;
+      }
+      .hero-line {
+        margin: 0;
+        color: var(--amber-dim);
+        font-size: 15px;
+      }
+      .new-dream {
+        width: 100%;
+        min-height: 104px;
+        border: 2px solid var(--amber);
+        border-radius: 26px;
+        background: #1a0e00;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+      }
+      .new-dream:hover,
+      .new-dream:focus-visible {
+        background: #241200;
+      }
+
+      /* Dream Diary (chevron dropdown list) ---------------------------------------- */
+      .diary-entry {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+      .diary-entry.current {
+        border-color: var(--amber-dim);
+      }
+      .diary-entry > summary {
+        min-height: 68px;
+        padding: 10px 14px;
+        gap: 12px;
+      }
+      .diary-head {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+        gap: 2px;
+      }
+      .diary-when {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--amber-dim);
+        font-variant-numeric: tabular-nums;
+      }
+      .diary-preview {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--amber);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .diary-icons {
+        font-size: 13px;
+        flex: 0 0 auto;
+        opacity: 0.85;
+      }
+      .diary-body {
+        padding: 0 14px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .diary-text {
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.6;
+      }
+      .diary-body img,
+      .diary-body video {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: var(--black);
+        filter: brightness(0.82) sepia(0.15);
+      }
+      .diary-meaning {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .diary-meaning strong {
+        color: var(--amber-hi);
+      }
+      .diary-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .diary-actions button {
+        padding: 0 6px;
+        font-size: 14px;
+        line-height: 1.2;
+      }
+
+      /* Full-screen dream workspace -------------------------------------------------- */
+      .workspace {
+        position: fixed;
+        inset: 0;
+        z-index: 15;
+        background: var(--black);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        transform: translateY(100%);
+        transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .workspace[hidden] {
+        display: none;
+      }
+      .workspace.open {
+        transform: translateY(0);
+      }
+      .workspace-inner {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 0 16px calc(40px + var(--safe-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .ws-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: calc(10px + var(--safe-top)) 0 10px;
+        background: linear-gradient(var(--black) 82%, rgba(0, 0, 0, 0));
+      }
+      .ws-header h2 {
+        flex: 1;
+        text-align: center;
+      }
+      .ws-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: -6px;
+      }
+      .workspace #dreamText {
+        min-height: 28vh;
+      }
+      body.ws-open {
+        overflow: hidden;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .workspace {
+          transition: none;
+        }
+      }
+      .lens-pill:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
       }
 
       /* Sleep overlay ------------------------------------------------------------ */
@@ -948,6 +1139,7 @@
 
       /* Toast ------------------------------------------------------------------ */
       .toast {
+        z-index: 40 !important;
         position: fixed;
         left: 50%;
         bottom: calc(20px + var(--safe-bottom));
@@ -990,11 +1182,22 @@
     </style>
   </head>
   <body>
-    <main>
+    <!-- ======================= Landing ======================= -->
+    <main class="landing" id="landing">
       <header>
         <div class="brand">
-          <h1>Midnight Dream Catcher</h1>
-          <span class="clock" id="clock" aria-hidden="true"></span>
+          <img
+            class="brand-logo"
+            src="app-icon.png"
+            alt=""
+            width="30"
+            height="30"
+            onerror="this.remove()"
+          />
+          <div class="brand-text">
+            <h1>Midnight Dream Catcher</h1>
+            <span class="clock" id="clock" aria-hidden="true"></span>
+          </div>
         </div>
         <div class="header-actions">
           <button
@@ -1021,249 +1224,19 @@
         href="#"
         target="_blank"
         rel="noopener"
-        >🔒 Upgrade to Pro (£12/mo)</a
+        >🔒 Subscribe for Pro Access (£12/mo)</a
       >
+      <p class="trial-note" id="trialNote" aria-live="polite"></p>
 
-      <button
-        class="dictate"
-        id="dictateBtn"
-        type="button"
-        aria-pressed="false"
-      >
-        <span>🎤 TAP TO DICTATE DREAM</span>
-      </button>
-      <div class="interim" id="interim" aria-live="polite"></div>
-
-      <section class="card" aria-labelledby="dreamHeading">
-        <div class="card-head">
-          <h2 id="dreamHeading">Tonight's Dream</h2>
-          <span class="saved-flag" id="savedFlag" aria-live="polite"></span>
-        </div>
-        <div class="meta" id="dreamMeta"></div>
-        <label for="dreamText" class="sr-only">Dream transcript</label>
-        <textarea
-          id="dreamText"
-          placeholder="Your dream lands here, word by word. Mumble freely: everything saves automatically."
-          spellcheck="false"
-        ></textarea>
-
-        <!-- Scene & Cast director -->
-        <details id="director">
-          <summary>🎨 Edit Scene &amp; Cast</summary>
-          <div class="drawer-body">
-            <span class="field-label" id="castLabel">Lead character</span>
-            <div
-              class="pills"
-              role="radiogroup"
-              aria-labelledby="castLabel"
-              id="castPills"
-            >
-              <button
-                type="button"
-                class="pill"
-                role="radio"
-                aria-checked="false"
-                data-character="man"
-              >
-                Man
-              </button>
-              <button
-                type="button"
-                class="pill"
-                role="radio"
-                aria-checked="false"
-                data-character="woman"
-              >
-                Woman
-              </button>
-              <button
-                type="button"
-                class="pill"
-                role="radio"
-                aria-checked="false"
-                data-character="nonbinary"
-              >
-                Non-binary
-              </button>
-              <button
-                type="button"
-                class="pill"
-                role="radio"
-                aria-checked="false"
-                data-character="pov"
-              >
-                Abstract / First-Person POV
-              </button>
-            </div>
-            <label for="appearance">Clothing / appearance</label>
-            <input
-              id="appearance"
-              type="text"
-              maxlength="120"
-              autocomplete="off"
-              placeholder="wearing a dark trench coat"
-            />
-
-            <label for="sceneLeft">To my left…</label>
-            <input
-              id="sceneLeft"
-              type="text"
-              maxlength="120"
-              autocomplete="off"
-              placeholder="a glowing river"
-            />
-            <label for="sceneRight">To my right / background…</label>
-            <input
-              id="sceneRight"
-              type="text"
-              maxlength="120"
-              autocomplete="off"
-              placeholder="a dense misty forest"
-            />
-
-            <label for="visualStyle">Visual style</label>
-            <select id="visualStyle">
-              <option value="cinematic">Cinematic Film</option>
-              <option value="surreal">Surreal Dreamscape</option>
-              <option value="anime">Anime / Studio Ghibli</option>
-              <option value="noir">Noir Black &amp; White</option>
-            </select>
-
-            <label for="narratorVoice">🎙️ Narrator Voice</label>
-            <select id="narratorVoice">
-              <option value="storyteller">
-                Mysterious Storyteller (Deep Male)
-              </option>
-              <option value="whisper">Dreamy Whisper (Soft Female)</option>
-              <option value="noir">Noir Detective (Gritty)</option>
-              <option value="device">Device Voice (Free Offline)</option>
-            </select>
-
-            <label for="masterPrompt">Master Director Prompt</label>
-            <textarea
-              id="masterPrompt"
-              spellcheck="false"
-              placeholder="Builds itself from your dream and the choices above."
-            ></textarea>
-            <div class="prompt-status">
-              <span class="hint" id="promptStatus"
-                >Auto-built from your dream.</span
-              >
-              <button type="button" id="rebuildPromptBtn" hidden>
-                ↺ Rebuild
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <div class="row">
-          <button type="button" id="readBtn">🔊 Read Back</button>
-          <button type="button" id="newBtn">🌙 New Dream</button>
-        </div>
-
-        <div class="gen-buttons">
-          <button type="button" id="frameBtn">
-            🖼️ Generate Storyboard Frame
-          </button>
-          <button type="button" id="videoBtn">
-            🎬 Generate 5s Dream Video
-          </button>
-        </div>
-
-        <div
-          class="progress"
-          id="progress"
-          hidden
-          role="status"
-          aria-live="polite"
-        >
-          <span class="progress-label" id="progressLabel"></span>
-          <div class="progress-track">
-            <div class="progress-fill" id="progressFill"></div>
-          </div>
-          <button type="button" id="cancelVideoBtn" hidden>Cancel video</button>
-        </div>
-        <div class="output" id="frameArea" aria-live="polite"></div>
-        <div class="output" id="videoArea" aria-live="polite"></div>
-
-        <section class="decoder" aria-labelledby="decoderHeading">
-          <h3 class="decoder-title" id="decoderHeading">
-            <span class="tint" aria-hidden="true">🔮</span> Decode Dream Meaning
-          </h3>
-          <p class="hint">Pick one lens. Each gives a short reading.</p>
-          <div
-            class="lens-pills"
-            id="lensPills"
-            role="radiogroup"
-            aria-labelledby="decoderHeading"
-          >
-            <button
-              type="button"
-              class="lens-pill"
-              role="radio"
-              aria-checked="false"
-              data-lens="biblical"
-            >
-              <span class="cross" aria-hidden="true">&#x271D;&#xFE0E;</span>
-              Biblical &amp; Spiritual
-            </button>
-            <button
-              type="button"
-              class="lens-pill"
-              role="radio"
-              aria-checked="false"
-              data-lens="jungian"
-            >
-              🧠 Jungian &amp; Psychological
-            </button>
-            <button
-              type="button"
-              class="lens-pill"
-              role="radio"
-              aria-checked="false"
-              data-lens="emotional"
-            >
-              💭 Emotional &amp; Waking Life
-            </button>
-            <button
-              type="button"
-              class="lens-pill"
-              role="radio"
-              aria-checked="false"
-              data-lens="creative"
-            >
-              🎬 Creative Story Spark
-            </button>
-          </div>
-          <button type="button" id="decodeBtn">
-            <span class="tint" aria-hidden="true">🔮</span> Decode Dream Meaning
-          </button>
-
-          <section
-            class="meaning-card"
-            id="meaningCard"
-            aria-labelledby="meaningTitle"
-            aria-live="polite"
-            hidden
-          >
-            <div class="meaning-head">
-              <h3 id="meaningTitle"></h3>
-              <button
-                type="button"
-                class="meaning-close"
-                id="meaningCloseBtn"
-                aria-label="Close dream meaning"
-              >
-                ✕ Close
-              </button>
-            </div>
-            <div id="meaningBody" class="meaning-body"></div>
-          </section>
-        </section>
+      <section class="hero" aria-label="Start a dream">
+        <p class="hero-line">Woke from a dream? Catch it before it fades.</p>
+        <button type="button" class="new-dream" id="newBtn">
+          ➕ New Dream Entry
+        </button>
       </section>
 
       <section aria-labelledby="savedHeading" class="stack">
-        <h2 id="savedHeading">Saved Dreams</h2>
+        <h2 id="savedHeading">📖 Dream Diary</h2>
         <div class="list" id="dreamList"></div>
       </section>
 
@@ -1462,6 +1435,280 @@
       </details>
     </main>
 
+    <!-- ======================= Dream workspace (full-screen panel) ======================= -->
+    <section
+      class="workspace"
+      id="workspace"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dreamHeading"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="workspace-inner">
+        <header class="ws-header">
+          <button
+            type="button"
+            class="header-btn"
+            id="wsBackBtn"
+            aria-label="Back to Dream Diary"
+          >
+            ‹ Diary
+          </button>
+          <h2 id="dreamHeading">Tonight's Dream</h2>
+          <button
+            type="button"
+            class="header-btn"
+            id="wsDoneBtn"
+            aria-label="Done: save and exit"
+          >
+            🌙 Done
+          </button>
+        </header>
+        <div class="ws-meta">
+          <span class="meta" id="dreamMeta"></span>
+          <span class="saved-flag" id="savedFlag" aria-live="polite"></span>
+        </div>
+
+        <!-- Upper section: capture -->
+        <label for="dreamText" class="sr-only">Dream transcript</label>
+        <textarea
+          id="dreamText"
+          placeholder="Your dream lands here, word by word. Mumble freely: everything saves automatically."
+          spellcheck="false"
+        ></textarea>
+        <button
+          class="dictate"
+          id="dictateBtn"
+          type="button"
+          aria-pressed="false"
+        >
+          <span>🎤 Tap to Dictate Dream</span>
+        </button>
+        <div class="interim" id="interim" aria-live="polite"></div>
+        <div class="row">
+          <button type="button" id="readBtn">🔊 Read Back</button>
+          <button type="button" id="topNarrateBtn">
+            🎙️ Re-record Voice Narration
+          </button>
+        </div>
+
+        <!-- Lower section: Scene & Cast -->
+        <details id="director">
+          <summary>🎨 Edit Scene &amp; Cast</summary>
+          <div class="drawer-body">
+            <span class="field-label" id="castLabel">Lead character</span>
+            <div
+              class="pills"
+              role="radiogroup"
+              aria-labelledby="castLabel"
+              id="castPills"
+            >
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="man"
+              >
+                Man
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="woman"
+              >
+                Woman
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="nonbinary"
+              >
+                Non-binary
+              </button>
+              <button
+                type="button"
+                class="pill"
+                role="radio"
+                aria-checked="false"
+                data-character="pov"
+              >
+                Abstract / First-Person POV
+              </button>
+            </div>
+            <label for="appearance">Clothing / appearance</label>
+            <input
+              id="appearance"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="wearing a dark trench coat"
+            />
+            <label for="sceneLeft">To my left…</label>
+            <input
+              id="sceneLeft"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="a glowing river"
+            />
+            <label for="sceneRight">To my right / background…</label>
+            <input
+              id="sceneRight"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              placeholder="a dense misty forest"
+            />
+            <label for="visualStyle">Visual style</label>
+            <select id="visualStyle">
+              <option value="cinematic">Cinematic Film</option>
+              <option value="surreal">Surreal Dreamscape</option>
+              <option value="anime">Anime / Studio Ghibli</option>
+              <option value="noir">Noir Black &amp; White</option>
+            </select>
+            <label for="narratorVoice">🎙️ Narrator Voice</label>
+            <select id="narratorVoice">
+              <option value="storyteller">
+                Mysterious Storyteller (Deep Male)
+              </option>
+              <option value="whisper">Dreamy Whisper (Soft Female)</option>
+              <option value="noir">Noir Detective (Gritty)</option>
+              <option value="device">Device Voice (Free Offline)</option>
+            </select>
+            <label for="masterPrompt">Master Director Prompt</label>
+            <textarea
+              id="masterPrompt"
+              spellcheck="false"
+              placeholder="Builds itself from your dream and the choices above."
+            ></textarea>
+            <div class="prompt-status">
+              <span class="hint" id="promptStatus"
+                >Auto-built from your dream.</span
+              >
+              <button type="button" id="rebuildPromptBtn" hidden>
+                ↺ Rebuild
+              </button>
+            </div>
+          </div>
+        </details>
+
+        <!-- Sequenced generation -->
+        <div class="gen-buttons">
+          <button type="button" id="frameBtn">
+            🖼️ Generate Storyboard Frame
+          </button>
+          <button type="button" id="videoBtn">
+            🎬 Generate 5s Dream Video
+          </button>
+        </div>
+        <div
+          class="progress"
+          id="progress"
+          hidden
+          role="status"
+          aria-live="polite"
+        >
+          <span class="progress-label" id="progressLabel"></span>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <button type="button" id="cancelVideoBtn" hidden>Cancel video</button>
+        </div>
+        <div class="output" id="frameArea" aria-live="polite"></div>
+        <div class="output" id="videoArea" aria-live="polite"></div>
+
+        <section class="decoder" aria-labelledby="decoderHeading">
+          <h3 class="decoder-title" id="decoderHeading">
+            <span class="tint" aria-hidden="true">🔮</span> Decode Current Dream
+            Meaning
+          </h3>
+          <p class="hint">Pick one lens. Each gives a short reading.</p>
+          <div
+            class="lens-pills"
+            id="lensPills"
+            role="radiogroup"
+            aria-labelledby="decoderHeading"
+          >
+            <button
+              type="button"
+              class="lens-pill"
+              role="radio"
+              aria-checked="false"
+              data-lens="biblical"
+            >
+              <span class="cross" aria-hidden="true">&#x271D;&#xFE0E;</span>
+              Biblical
+            </button>
+            <button
+              type="button"
+              class="lens-pill"
+              role="radio"
+              aria-checked="false"
+              data-lens="jungian"
+            >
+              🧠 Jungian
+            </button>
+            <button
+              type="button"
+              class="lens-pill"
+              role="radio"
+              aria-checked="false"
+              data-lens="emotional"
+            >
+              💭 Waking Life
+            </button>
+            <button
+              type="button"
+              class="lens-pill"
+              role="radio"
+              aria-checked="false"
+              data-lens="creative"
+            >
+              🎬 Story Spark
+            </button>
+            <button
+              type="button"
+              class="lens-pill"
+              role="radio"
+              aria-checked="false"
+              data-lens="islamic"
+            >
+              🕌 Islamic / Hadith
+            </button>
+          </div>
+          <button type="button" id="decodeBtn">
+            <span class="tint" aria-hidden="true">🔮</span> Decode Dream Meaning
+          </button>
+          <section
+            class="meaning-card"
+            id="meaningCard"
+            aria-labelledby="meaningTitle"
+            aria-live="polite"
+            hidden
+          >
+            <div class="meaning-head">
+              <h3 id="meaningTitle"></h3>
+              <button
+                type="button"
+                class="meaning-close"
+                id="meaningCloseBtn"
+                aria-label="Close dream meaning"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <div id="meaningBody" class="meaning-body"></div>
+          </section>
+        </section>
+      </div>
+    </section>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <div
@@ -1501,6 +1748,8 @@
           anthropicModel: "mdc.anthropicModel.v1",
           falLlmModel: "mdc.falLlmModel.v1",
           subscriber: "mdc.subscriber.v1",
+          trialUsed: "mdc.hasUsedTrial.v1",
+          deviceId: "mdc.deviceId.v1",
           proxyUrl: "mdc.proxyUrl.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
           falKey: "mdc.falKey.v1",
@@ -1644,6 +1893,11 @@
           anthropicModel: $("anthropicModel"),
           falLlmModel: $("falLlmModel"),
           clearAnthropicBtn: $("clearAnthropicBtn"),
+          workspace: $("workspace"),
+          wsBackBtn: $("wsBackBtn"),
+          wsDoneBtn: $("wsDoneBtn"),
+          topNarrateBtn: $("topNarrateBtn"),
+          trialNote: $("trialNote"),
           accountPill: $("accountPill"),
           subEmail: $("subEmail"),
           subToken: $("subToken"),
@@ -1901,7 +2155,7 @@
           els.savedFlag.textContent = "";
           els.director.open = false;
           loadIntoEditor(null);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          els.workspace.scrollTop = 0;
         }
 
         function openDream(id) {
@@ -1911,7 +2165,7 @@
           currentId = id;
           persistDreams();
           loadIntoEditor(dream);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          els.workspace.scrollTop = 0;
         }
 
         function deleteDream(id) {
@@ -2052,99 +2306,192 @@
             : "Starts saving with your first word.";
         }
 
+        // ---- Dream Diary: chronological chevron dropdown list ----------------------
+        const openDiaryEntries = new Set(); // keeps cards open across re-renders
+
+        function diaryPreview(text) {
+          const t = String(text || "")
+            .trim()
+            .replace(/\s+/g, " ");
+          return t
+            ? t.length > 80
+              ? `${t.slice(0, 80)}…`
+              : t
+            : "(no transcript yet)";
+        }
+
+        function diaryMeanings(dream) {
+          const meanings = getMeanings(dream);
+          const out = [];
+          for (const lens of Object.keys(LENSES)) {
+            const r = meanings[lens];
+            if (!r) continue;
+            const p = el("p", "diary-meaning");
+            p.append(
+              el("strong", "", `${LENSES[lens].label}: `),
+              document.createTextNode(r.reading),
+            );
+            out.push(p);
+          }
+          return out;
+        }
+
         function renderList() {
           els.dreamList.replaceChildren();
-          const saved = dreams.filter((d) => !isEmptyDream(d));
+          const saved = dreams
+            .filter((d) => !isEmptyDream(d))
+            .sort((a, b) => b.createdAt - a.createdAt);
           if (saved.length === 0) {
             els.dreamList.append(
               el(
                 "div",
                 "empty",
-                "No dreams saved yet. Your first one will appear here.",
+                "Your Dream Diary is empty. Tap “➕ New Dream Entry” the next time you wake from a dream.",
               ),
             );
             return;
           }
 
           for (const dream of saved) {
+            const isCurrent = dream.id === currentId && wsOpen;
             const item = el(
-              "article",
-              dream.id === currentId ? "entry current" : "entry",
+              "details",
+              isCurrent ? "diary-entry current" : "diary-entry",
             );
-            item.append(
+            item.open = openDiaryEntries.has(dream.id);
+
+            const summary = el("summary");
+            const head = el("div", "diary-head");
+            head.append(
               el(
-                "div",
-                "meta",
-                `${formatStamp(dream.createdAt)}${dream.id === currentId ? " · open above" : ""}`,
+                "span",
+                "diary-when",
+                `${formatStamp(dream.createdAt)}${isCurrent ? " · editing" : ""}`,
               ),
+              el("span", "diary-preview", diaryPreview(dream.text)),
             );
-
-            const text = el(
-              "div",
-              "entry-text",
-              dream.text.trim() || "(no transcript)",
-            );
-            text.addEventListener("click", () =>
-              text.classList.toggle("expanded"),
-            );
-            item.append(text);
-
-            const image = sessionImages.get(dream.id) || dream.image;
-            if (image) {
-              const img = el("img");
-              img.src = image;
-              img.alt = "Storyboard frame for this dream";
-              img.loading = "lazy";
-              item.append(img);
+            const icons = [];
+            if (dream.image || sessionImages.has(dream.id)) icons.push("🖼️");
+            if (dream.video) icons.push("🎬");
+            if (dream.pendingVideo) icons.push("⏳");
+            if (dream.narration) icons.push("🎙️");
+            if (hasMeanings(dream)) icons.push("🔮");
+            summary.append(head);
+            if (icons.length) {
+              const iconSpan = el("span", "diary-icons", icons.join(" "));
+              iconSpan.setAttribute(
+                "aria-label",
+                "Has: " +
+                  [
+                    (dream.image || sessionImages.has(dream.id)) && "frame",
+                    dream.video && "video",
+                    dream.narration && "narration",
+                    hasMeanings(dream) && "meaning",
+                  ]
+                    .filter(Boolean)
+                    .join(", "),
+              );
+              summary.append(iconSpan);
             }
-            const badges = [];
-            if (dream.video) badges.push("🎬 Dream video");
-            if (dream.video && dream.narration) badges.push("🎙️ Narrated");
-            if (dream.pendingVideo) badges.push("⏳ Video rendering");
-            if (hasMeanings(dream)) badges.push("🔮 Decoded");
-            if (badges.length)
-              item.append(el("div", "entry-badges", badges.join(" \u00B7 ")));
-            if (hasMeanings(dream)) item.append(buildEntryMeaning(dream));
+            item.append(summary);
 
-            const actions = el("div", "entry-actions");
-            const open = el("button", "", "Open");
-            open.type = "button";
-            open.addEventListener("click", () => openDream(dream.id));
-
-            const copy = el("button", "", "Copy");
-            copy.type = "button";
-            copy.addEventListener("click", async () => {
-              const ok = await copyText(
-                `${formatStamp(dream.createdAt)}\n\n${dream.text.trim()}`,
+            // Body is built only when opened (keeps long diaries light).
+            const body = el("div", "diary-body");
+            const build = () => {
+              body.replaceChildren();
+              body.append(
+                el("p", "diary-text", dream.text.trim() || "(no transcript)"),
               );
-              toast(
-                ok
-                  ? "Dream copied."
-                  : "Copy blocked. Press and hold the text to copy.",
-              );
-            });
 
-            // Two-tap delete: no browser dialogs blasting light at 3am.
-            const del = el("button", "btn-delete", "Delete");
-            del.type = "button";
-            let armTimer = null;
-            del.addEventListener("click", () => {
-              if (del.classList.contains("confirm")) {
-                clearTimeout(armTimer);
-                deleteDream(dream.id);
-                toast("Dream deleted.");
-                return;
+              const image = sessionImages.get(dream.id) || dream.image;
+              if (image) {
+                const img = el("img");
+                img.src = image;
+                img.alt = "Storyboard frame for this dream";
+                img.loading = "lazy";
+                body.append(img);
               }
-              del.classList.add("confirm");
-              del.textContent = "Sure?";
-              armTimer = setTimeout(() => {
-                del.classList.remove("confirm");
-                del.textContent = "Delete";
-              }, 3000);
-            });
+              if (dream.video?.url) {
+                const video = el("video");
+                video.src = dream.video.url;
+                video.controls = true;
+                video.loop = true;
+                video.playsInline = true;
+                video.setAttribute("playsinline", "");
+                video.preload = "none";
+                video.addEventListener(
+                  "error",
+                  () => {
+                    video.replaceWith(
+                      el(
+                        "p",
+                        "hint",
+                        "This video link has expired. Open the dream and generate it again.",
+                      ),
+                    );
+                  },
+                  { once: true },
+                );
+                body.append(video);
+              }
+              body.append(...diaryMeanings(dream));
 
-            actions.append(open, copy, del);
-            item.append(actions);
+              const actions = el("div", "diary-actions");
+              const open = el("button", "", "🔓 Open in Editor");
+              open.type = "button";
+              open.addEventListener("click", () => {
+                openDream(dream.id);
+                openWorkspace();
+              });
+
+              const copy = el("button", "", "📋 Copy Text");
+              copy.type = "button";
+              copy.addEventListener("click", async () => {
+                const ok = await copyText(
+                  `${formatStamp(dream.createdAt)}\n\n${dream.text.trim()}`,
+                );
+                toast(
+                  ok
+                    ? "Dream copied."
+                    : "Copy blocked. Press and hold the text to copy.",
+                );
+              });
+
+              // Two-tap delete: no bright browser dialogs at 3am.
+              const del = el("button", "btn-delete", "🗑️ Delete Entry");
+              del.type = "button";
+              let armTimer = null;
+              del.addEventListener("click", () => {
+                if (del.classList.contains("confirm")) {
+                  clearTimeout(armTimer);
+                  openDiaryEntries.delete(dream.id);
+                  deleteDream(dream.id);
+                  toast("Dream deleted.");
+                  return;
+                }
+                del.classList.add("confirm");
+                del.textContent = "Tap again to delete";
+                armTimer = setTimeout(() => {
+                  del.classList.remove("confirm");
+                  del.textContent = "🗑️ Delete Entry";
+                }, 3000);
+              });
+
+              actions.append(open, copy, del);
+              body.append(actions);
+            };
+            if (item.open) build();
+            item.append(body);
+
+            item.addEventListener("toggle", () => {
+              if (item.open) {
+                openDiaryEntries.add(dream.id);
+                build();
+              } else {
+                openDiaryEntries.delete(dream.id);
+                for (const v of body.querySelectorAll("video")) v.pause();
+              }
+            });
             els.dreamList.append(item);
           }
         }
@@ -2207,7 +2554,7 @@
               el("span", "rec-dot"),
               el("span", "", "LISTENING… TAP TO STOP"),
             );
-          else els.dictateBtn.append(el("span", "", "🎤 TAP TO DICTATE DREAM"));
+          else els.dictateBtn.append(el("span", "", "🎤 Tap to Dictate Dream"));
         }
 
         function commitWords(raw) {
@@ -2668,7 +3015,7 @@
               `Pro subscriber, ${credits} credits left. Open account settings.`,
             );
           } else {
-            pill.textContent = "🔒 Upgrade to Pro (£12/mo)";
+            pill.textContent = "🔒 Subscribe for Pro Access (£12/mo)";
             pill.href = checkoutUrl();
             pill.target = "_blank";
             pill.setAttribute(
@@ -2679,6 +3026,12 @@
 
           els.subscribeBtn.href = checkoutUrl();
           els.signOutBtn.hidden = !sub;
+          els.trialNote.textContent =
+            (sub?.active && sub?.token) || getFalKey()
+              ? ""
+              : hasUsedTrial()
+                ? "Free trial used \u00B7 dictation, read-back and the offline guide stay free"
+                : "\uD83C\uDF81 Your first dream image or video is free";
           if (sub && document.activeElement !== els.subEmail)
             els.subEmail.value = sub.email;
           if (sub?.token && document.activeElement !== els.subToken)
@@ -2900,15 +3253,30 @@
          * POST {PROXY_URL}/generate { email, token, endpoint, payload }.
          * Accepts the fal result either at the top level or under `result` / `data`.
          */
-        async function proxyGenerate(endpoint, payload, signal) {
-          const email = getSubscriberEmail();
-          const token = getSubscriberToken();
+        async function proxyGenerate(
+          endpoint,
+          payload,
+          signal,
+          { trial = false } = {},
+        ) {
+          const email = trial ? "" : getSubscriberEmail();
+          const token = trial ? "" : getSubscriberToken();
+          const body = trial
+            ? {
+                email,
+                token,
+                trial: true,
+                deviceId: getDeviceId(),
+                endpoint,
+                payload,
+              }
+            : { email, token, endpoint, payload };
           let res;
           try {
             res = await fetch(`${proxyBase()}/generate`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, token, endpoint, payload }),
+              body: JSON.stringify(body),
               signal,
             });
           } catch (err) {
@@ -2932,6 +3300,18 @@
           )
             setCredits(remaining);
 
+          if (
+            trial &&
+            (res.status === 403 ||
+              res.status === 402 ||
+              res.status === 401 ||
+              res.status === 429)
+          ) {
+            markTrialUsed(); // the Worker says this device's free creation is spent
+            throw Object.assign(userError("Trial Completed."), {
+              trialDone: true,
+            });
+          }
           if (res.status === 403 || res.status === 402) {
             saveSubscriber({
               credits: Number.isFinite(remaining) ? remaining : 0,
@@ -2961,9 +3341,60 @@
           return inner && typeof inner === "object" ? inner : data;
         }
 
-        /** Where an AI request should go: developer key, subscriber proxy, or nowhere. */
-        const routeAi = () =>
-          getFalKey() ? "dev" : hasSubscriberAccess() ? "proxy" : null;
+        // ---- 1-dream free trial ---------------------------------------------------
+        // One AI image OR video through the proxy for people without a subscription.
+        // The Worker must enforce this too (per device / IP): localStorage alone can
+        // be cleared.
+        const hasUsedTrial = () => readStore(STORAGE.trialUsed, false) === true;
+        function getDeviceId() {
+          let id = readStore(STORAGE.deviceId, "");
+          if (!id) {
+            id =
+              (crypto.randomUUID && crypto.randomUUID()) ||
+              `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+            writeStore(STORAGE.deviceId, id);
+          }
+          return id;
+        }
+        let trialInFlight = false;
+        function markTrialUsed() {
+          writeStore(STORAGE.trialUsed, true);
+          renderAccount();
+        }
+
+        /**
+         * Where an AI request should go.
+         * 'media' (frames, videos): developer key > subscriber > free trial (once).
+         * 'extra' (AI narration, AI decoding): developer key > subscriber only.
+         */
+        function routeAi(kind = "extra") {
+          if (getFalKey()) return "dev";
+          if (hasSubscriberAccess()) return "proxy";
+          if (kind === "media" && !hasUsedTrial()) return "trial";
+          return null;
+        }
+
+        /** Shown once the free creation has been used. */
+        function trialDoneNotice(area) {
+          const actions = el("div", "notice-actions");
+          actions.append(
+            stripeLink("\uD83D\uDD12 Subscribe for Pro Access (\u00A312/mo)"),
+            signInButton(),
+          );
+          notice(area, [
+            el("strong", "", "\uD83D\uDD12 Trial Completed."),
+            document.createTextNode(
+              " Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.",
+            ),
+            actions,
+          ]);
+        }
+
+        /** No developer key, no subscriber access: trial used or unavailable. */
+        function lockedNotice(area, featureLabel) {
+          if (hasUsedTrial()) trialDoneNotice(area);
+          else accessNotice(area, featureLabel);
+        }
 
         function stripeLink(label = "🔒 Upgrade to Pro (£12/mo)") {
           const a = el("a", "btn-link btn-primary", label);
@@ -3020,6 +3451,7 @@
         }
 
         function handleAiError(area, err, fallbackMessage) {
+          if (err?.trialDone) return trialDoneNotice(area);
           if (err?.upgrade) return upgradeNotice(area, err.message);
           if (err?.signIn) {
             const actions = el("div", "notice-actions");
@@ -3289,11 +3721,12 @@
           return src;
         }
 
-        async function proxyImage(prompt, signal) {
+        async function proxyImage(prompt, signal, { trial = false } = {}) {
           const result = await proxyGenerate(
             getFalImageModel(),
             { prompt, image_size: "landscape_16_9", num_images: 1 },
             signal,
+            { trial },
           );
           const src = result?.images?.[0]?.url || result?.image?.url;
           if (!src) throw userError("The server returned no image.");
@@ -3309,11 +3742,18 @@
           const prompt = promptForGeneration();
           const falKey = getFalKey();
           const openaiKey = getOpenaiKey();
-          const useProxy = !falKey && !openaiKey && hasSubscriberAccess();
+          const proxyRoute = !falKey && !openaiKey ? routeAi("media") : null; // 'proxy' | 'trial' | null
+          const useProxy = proxyRoute === "proxy" || proxyRoute === "trial";
+          const trialRun = proxyRoute === "trial";
           if (!falKey && !openaiKey && !useProxy) {
-            accessNotice(els.frameArea, "🖼️ Storyboard frames");
+            lockedNotice(els.frameArea, "🖼️ Storyboard frames");
             return;
           }
+          if (trialRun && trialInFlight) {
+            toast("Your free trial creation is already on its way.");
+            return;
+          }
+          if (trialRun) trialInFlight = true;
 
           const dream = ensureCurrentDream();
           persistDreams();
@@ -3332,7 +3772,9 @@
             const src = falKey
               ? await falImage(falKey, prompt, controller.signal)
               : useProxy
-                ? await proxyImage(prompt, controller.signal)
+                ? await proxyImage(prompt, controller.signal, {
+                    trial: trialRun,
+                  })
                 : await openaiImage(openaiKey, prompt, controller.signal);
 
             sessionImages.set(dream.id, src);
@@ -3346,7 +3788,15 @@
             if (currentId === dream.id)
               renderFrame(sessionImages.get(dream.id) || dream.image);
             renderList();
-            toast("Frame developed.");
+            if (trialRun) {
+              markTrialUsed();
+              toast(
+                "Frame developed. That was your free trial creation.",
+                4000,
+              );
+            } else {
+              toast("Frame developed.");
+            }
           } catch (err) {
             const message = err?.handled
               ? err.message
@@ -3359,6 +3809,7 @@
           } finally {
             clearTimeout(timeout);
             frameJob = null;
+            if (trialRun) trialInFlight = false;
             els.frameBtn.disabled = false;
             els.frameBtn.textContent = "🖼️ Generate Storyboard Frame";
             if (!videoJob || videoJob.dreamId !== currentId) hideProgress();
@@ -3565,7 +4016,7 @@
             : "storyteller";
           const narrator = NARRATORS[narratorId];
           const key = getFalKey();
-          const route = routeAi();
+          const route = routeAi("extra");
           const dreamId = dream.id;
 
           // Free path: device speech, synced to play/pause.
@@ -3890,7 +4341,8 @@
          * Subscriber path: one long POST to the Worker, which renders on fal.ai
          * and replies with the finished video. Progress is time-based.
          */
-        async function generateVideoViaProxy(prompt) {
+        async function generateVideoViaProxy(prompt, { trial = false } = {}) {
+          if (trial) trialInFlight = true;
           const dream = ensureCurrentDream();
           persistDreams();
           els.videoArea.replaceChildren();
@@ -3930,6 +4382,7 @@
               getFalVideoModel(),
               { prompt },
               controller.signal,
+              { trial },
             );
             const url =
               result?.video?.url ||
@@ -3937,8 +4390,14 @@
               result?.video_url;
             if (!url)
               throw userError("The server finished but returned no video.");
+            if (trial) markTrialUsed();
             if (job.cancelled) return;
             completeVideo(dream.id, url);
+            if (trial)
+              toast(
+                "Your dream video is ready. That was your free trial creation.",
+                4500,
+              );
           } catch (err) {
             if (job.cancelled) return;
             videoJob = null;
@@ -3959,6 +4418,7 @@
           } finally {
             clearInterval(ticker);
             clearTimeout(timeout);
+            if (trial) trialInFlight = false;
           }
         }
 
@@ -3970,17 +4430,21 @@
           }
           const prompt = promptForGeneration();
           const key = getFalKey();
-          const route = routeAi();
+          const route = routeAi("media");
           if (!route) {
-            accessNotice(els.videoArea, "🎬 Dream videos");
+            lockedNotice(els.videoArea, "🎬 Dream videos");
             return;
           }
           if (videoJob) {
             toast("A video is already rendering.");
             return;
           }
-          if (route === "proxy") {
-            await generateVideoViaProxy(prompt);
+          if (route === "trial" && trialInFlight) {
+            toast("Your free trial creation is already on its way.");
+            return;
+          }
+          if (route === "proxy" || route === "trial") {
+            await generateVideoViaProxy(prompt, { trial: route === "trial" });
             return;
           }
 
@@ -4573,26 +5037,94 @@
             "Windows can recall “the windows of heaven” opened in blessing (Malachi 3:10).",
         };
 
+        /**
+         * Islamic readings for the offline guide, keyed by symbol label. Quran
+         * references are given as (surah:ayah); classical dream-manual readings are
+         * framed as tradition, not certainty.
+         */
+        const ISLAMIC = {
+          Water:
+            "The Quran says “We made from water every living thing” (21:30); classical dream manuals read clear water as knowledge, life and provision.",
+          River:
+            "Rivers recall the gardens “beneath which rivers flow” promised to the believers (2:25); a sweet river is often read as blessing.",
+          "Ocean / Sea":
+            "The sea recalls its parting for Musa (26:63), a sign of rescue when every way seemed closed.",
+          "Rain / Storm":
+            "Rain is described as mercy sent down after people had despaired (42:28); gentle rain in a dream is often read as relief.",
+          Flood:
+            "A flood recalls Nuh and the Ark (11:40–44): a great test, followed by safety for those who turned to Allah.",
+          Forest:
+            "Lush trees recall the “two gardens” promised to whoever fears standing before their Lord (55:46).",
+          Mountain:
+            "Mountains are called “pegs” that steady the earth (78:7); interpreters often link them to steadfastness or a person of standing.",
+          Cave: "A cave recalls the People of the Cave, sheltered by Allah’s mercy (18:10), and the cave of the Hijrah (9:40).",
+          Flying:
+            "Interpreters in the classical Tafsir al-Ahlam tradition often read flying as a journey or a rise in standing, depending on the dreamer’s state.",
+          Stairs:
+            "Ascending recalls the Prophet’s Night Journey (17:1); climbing is often read as rising in faith or rank.",
+          "Night / Darkness":
+            "Allah brings the believers “out of darknesses into the light” (2:257), and made the night a covering (78:10).",
+          "House / Rooms":
+            "Allah “made your homes a place of rest” (16:80); a house often reflects the dreamer’s family and inner state.",
+          Snake:
+            "The snake recalls Musa’s staff becoming a serpent by Allah’s will (20:20); interpreters often read snakes as a hidden enemy.",
+          Dog: "A dog lay stretched at the cave’s entrance guarding the sleepers (18:18), an image of loyalty.",
+          Bird: "Birds are held aloft by none but the Most Merciful (67:19), a reminder of trust and provision.",
+          Horse:
+            "Horses were created for riding and as adornment (16:8); interpreters often link them to honour and strength.",
+          "Wolf / Wild Animal":
+            "The wolf recalls Yusuf’s brothers falsely claiming a wolf had eaten him (12:17); it is often read as betrayal or deceit.",
+          Spider:
+            "The Quran calls the spider’s house “the weakest of houses” (29:41), a picture of fragile reliance on other than Allah.",
+          Fish: "A great fish recalls Yunus, who called on Allah from the darkness and was saved (37:142; 21:87).",
+          Stranger:
+            "Angels came to Ibrahim as honoured guests he did not recognise (51:24–25), so a stranger may carry a message.",
+          Vehicle:
+            "A journey recalls the Ark: “in the name of Allah is its course and its anchorage” (11:41).",
+          "Road / Path":
+            "A path recalls the daily prayer for “the straight path” (1:6); a clear road is often read as guidance.",
+          Light:
+            "“Allah is the Light of the heavens and the earth” (24:35); light is often read as guidance and faith.",
+          Fire: "Fire recalls Ibrahim, for whom it was made “coolness and safety” (21:69).",
+          Moon: "Yusuf saw eleven stars, the sun and the moon prostrating to him (12:4), a dream later fulfilled.",
+          Sun: "Yusuf’s dream of the sun, the moon and eleven stars (12:4) pointed to a destiny not yet understood.",
+          Death:
+            "Sleep itself is likened to death: Allah takes the souls in their sleep and returns them (39:42).",
+          "Naked / Exposed":
+            "Adam and Hawwa’s nakedness became apparent after the tree (7:22), and the Quran calls piety the best clothing (7:26).",
+          Lost: "“Did He not find you lost and guide you?” (93:7).",
+          Key: "“With Him are the keys of the unseen; none knows them except Him” (6:59).",
+          "Library / Books":
+            "Revelation began with “Read!” (96:1); books in dreams are often read as knowledge.",
+          Glass:
+            "The Verse of Light describes a lamp within glass, “as if it were a brilliant star” (24:35).",
+        };
+
         const LENSES = {
           biblical: {
-            label: "✝︎ Biblical & Spiritual",
+            label: "✝︎ Biblical",
             instruction:
               "Biblical & Spiritual: read the key images through biblical dream traditions (Joseph, Daniel, Jacob’s ladder; water and rivers, wilderness, light, messengers, thresholds). Include one or two well-known scripture references in brackets, citing only references you are certain are accurate. Offer it as a reflective, traditional perspective, never as prophecy.",
           },
           jungian: {
-            label: "🧠 Jungian & Psychological",
+            label: "🧠 Jungian",
             instruction:
               "Jungian & Psychological: name the key archetypes (Shadow, anima/animus, the Self, threshold, journey) and what the unconscious may be processing.",
           },
           emotional: {
-            label: "💭 Emotional & Waking Life",
+            label: "💭 Waking Life",
             instruction:
               "Emotional & Waking Life: suggest possible links to current stress, transitions and the day’s leftover feelings, then end with one short reflective question.",
           },
           creative: {
-            label: "🎬 Creative Story Spark",
+            label: "🎬 Story Spark",
             instruction:
               "Creative Story Spark: give one vivid, concise story or film scene idea inspired by the dream.",
+          },
+          islamic: {
+            label: "\uD83D\uDD4C Islamic / Hadith",
+            instruction:
+              "Islamic / Hadith: interpret the motifs through the Quran, authentic Hadith and the classical Tafsir al-Ahlam tradition associated with Ibn Sirin. Cite one or two Quran references as (surah:ayah) only if you are certain they are accurate. Be respectful, present it as a traditional reflection rather than a fatwa or prediction, and acknowledge that Allah knows best.",
           },
         };
         const DEFAULT_LENS = "jungian";
@@ -4637,6 +5169,16 @@
               : "Scripture treats dreams as one way God may speak “in a dream, in a vision of the night” (Job 33:15), always to be weighed with discernment.";
             question =
               "Write the vision, and make it plain (Habakkuk 2:2): what part of this dream do you want to pray or reflect on?";
+          } else if (lens === "islamic") {
+            const lines = symbols
+              .filter((s) => ISLAMIC[s.label])
+              .slice(0, 2)
+              .map((s) => ISLAMIC[s.label]);
+            reading = lines.length
+              ? lines.join(" ")
+              : "In Islamic tradition a good dream (ru\u2019ya) is from Allah and a disturbing one is from Shaytan (Sahih al-Bukhari and Muslim); any interpretation is a reflection, and Allah knows best.";
+            question =
+              "If the dream was good, thank Allah and share it only with those you love; if it was disturbing, seek refuge in Allah and don\u2019t dwell on it (as taught in Sahih al-Bukhari and Muslim).";
           } else if (lens === "jungian") {
             reading = top.length
               ? top.map((s) => s.jung).join(" ")
@@ -5161,7 +5703,9 @@
               "hint",
               lens === "biblical"
                 ? "A reflective, traditional perspective, not prophecy or a diagnosis."
-                : "For reflection and creativity, not a diagnosis.",
+                : lens === "islamic"
+                  ? "A reflective, traditional perspective, not a fatwa or a prediction. Allah knows best."
+                  : "For reflection and creativity, not a diagnosis.",
             ),
           );
 
@@ -5271,8 +5815,61 @@
         }
 
         function openSettings() {
-          els.settings.open = true;
-          els.settings.scrollIntoView({ behavior: "smooth", block: "start" });
+          const reveal = () => {
+            els.settings.open = true;
+            els.settings.scrollIntoView({ behavior: "smooth", block: "start" });
+          };
+          if (wsOpen) {
+            closeWorkspace();
+            setTimeout(reveal, 380);
+          } else {
+            reveal();
+          }
+        }
+
+        // ---- Full-screen dream workspace ---------------------------------------------
+        let wsOpen = false;
+        let wsHistoryEntry = false;
+
+        function openWorkspace() {
+          if (wsOpen) return;
+          wsOpen = true;
+          els.workspace.hidden = false;
+          els.workspace.setAttribute("aria-hidden", "false");
+          els.workspace.scrollTop = 0;
+          document.body.classList.add("ws-open");
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => els.workspace.classList.add("open")),
+          );
+          // Lets the phone's Back gesture / button close the panel.
+          try {
+            history.pushState({ mdcWorkspace: true }, "");
+            wsHistoryEntry = true;
+          } catch {
+            wsHistoryEntry = false;
+          }
+          setTimeout(() => {
+            if (wsOpen) els.dictateBtn.focus({ preventScroll: true });
+          }, 360);
+        }
+
+        function closeWorkspace({ fromHistory = false } = {}) {
+          if (!wsOpen) return;
+          wsOpen = false;
+          haltDictation();
+          stopReading();
+          for (const v of els.workspace.querySelectorAll("video")) v.pause();
+          saveNow();
+          els.workspace.classList.remove("open");
+          els.workspace.setAttribute("aria-hidden", "true");
+          document.body.classList.remove("ws-open");
+          setTimeout(() => {
+            if (!wsOpen) els.workspace.hidden = true;
+          }, 360);
+          if (wsHistoryEntry && !fromHistory) history.back();
+          wsHistoryEntry = false;
+          renderList();
+          els.newBtn.focus({ preventScroll: true });
         }
 
         // =========================================================================
@@ -5337,7 +5934,32 @@
           voice.listening ? stopDictation() : startDictation(),
         );
         els.readBtn.addEventListener("click", toggleReading);
-        els.newBtn.addEventListener("click", startNewDream);
+        els.newBtn.addEventListener("click", () => {
+          startNewDream();
+          openWorkspace();
+        });
+        els.wsBackBtn.addEventListener("click", () => closeWorkspace());
+        els.wsDoneBtn.addEventListener("click", exitApp);
+        window.addEventListener("popstate", () => {
+          if (wsOpen) closeWorkspace({ fromHistory: true });
+        });
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && wsOpen && els.sleepOverlay.hidden)
+            closeWorkspace();
+        });
+        els.topNarrateBtn.addEventListener("click", async () => {
+          const dream = currentDream();
+          if (!dream?.video?.url) {
+            toast(
+              "Generate a dream video first: the narration plays over it.",
+              3500,
+            );
+            return;
+          }
+          els.videoArea.scrollIntoView({ behavior: "smooth", block: "center" });
+          await addNarration(els.topNarrateBtn);
+          els.topNarrateBtn.textContent = "🎙️ Re-record Voice Narration";
+        });
         els.frameBtn.addEventListener("click", generateFrame);
         els.videoBtn.addEventListener("click", generateVideo);
         els.cancelVideoBtn.addEventListener("click", () => cancelVideo());
