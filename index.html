@@ -546,6 +546,48 @@
         flex-direction: column;
         gap: 10px;
       }
+      .frame-card {
+        position: relative;
+      }
+      .frame-card[hidden],
+      .frame-show[hidden] {
+        display: none;
+      }
+      .frame-card img {
+        display: block;
+      }
+      .frame-hide {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        min-height: 44px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.72);
+        border-color: var(--line);
+        color: var(--amber);
+        font-size: 14px;
+        font-weight: 600;
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+      }
+      .frame-hide:hover,
+      .frame-hide:focus-visible {
+        color: var(--amber-hi);
+        border-color: var(--amber-dim);
+      }
+      .frame-show {
+        width: 100%;
+        border-radius: 999px;
+        background: var(--black);
+        color: var(--amber-dim);
+        font-weight: 600;
+      }
+      .frame-show:hover,
+      .frame-show:focus-visible {
+        color: var(--amber-hi);
+        border-color: var(--amber-dim);
+      }
       .output img,
       .output video {
         width: 100%;
@@ -3108,11 +3150,53 @@
         // Generation: storyboard frame (fal.ai, OpenAI as backup)
         // =========================================================================
 
+        /**
+         * Storyboard frame with a ✕ Hide button. Hiding only toggles visibility:
+         * the same image stays in memory, so Show never regenerates or costs a credit.
+         * The choice is saved per dream.
+         */
         function renderFrame(src) {
+          const dream = currentDream();
+
           const img = el("img");
           img.src = src;
           img.alt = "Storyboard frame of your dream";
-          els.frameArea.replaceChildren(img);
+
+          const hide = el("button", "frame-hide", "\u2715 Hide");
+          hide.type = "button";
+          hide.setAttribute("aria-label", "Hide storyboard frame");
+
+          const card = el("div", "frame-card");
+          card.append(img, hide);
+
+          const show = el(
+            "button",
+            "frame-show",
+            "\uD83D\uDDBC\uFE0F Show Storyboard Frame",
+          );
+          show.type = "button";
+          show.setAttribute("aria-expanded", "false");
+
+          const setHidden = (hidden, { focus = false } = {}) => {
+            card.hidden = hidden;
+            show.hidden = !hidden;
+            show.setAttribute("aria-expanded", String(!hidden));
+            if (dream && Boolean(dream.frameHidden) !== hidden) {
+              dream.frameHidden = hidden;
+              persistDreams();
+            }
+            if (focus) (hidden ? show : hide).focus({ preventScroll: true });
+          };
+          hide.addEventListener("click", () =>
+            setHidden(true, { focus: true }),
+          );
+          show.addEventListener("click", () => {
+            setHidden(false, { focus: true });
+            card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          });
+
+          els.frameArea.replaceChildren(card, show);
+          setHidden(Boolean(dream?.frameHidden));
         }
 
         async function falImage(key, prompt, signal) {
@@ -3246,6 +3330,8 @@
             if (persistDreams()) sessionImages.delete(dream.id);
             else delete dream.image;
 
+            dream.frameHidden = false;
+            persistDreams();
             if (currentId === dream.id)
               renderFrame(sessionImages.get(dream.id) || dream.image);
             renderList();
