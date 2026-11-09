@@ -1,0 +1,25 @@
+{
+  "name": "The Midnight Dream Catcher",
+  "short_name": "Dream Catcher",
+  "description": "A pitch-black bedside companion for capturing dreams by voice, then directing them into frames and short videos.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
