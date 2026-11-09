@@ -1186,6 +1186,19 @@
       button.save-phone:disabled {
         opacity: 0.6;
       }
+      .media-source {
+        margin: 8px 2px 0;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--amber-dim);
+        overflow-wrap: anywhere;
+      }
+      .media-source a {
+        color: var(--amber);
+      }
+      .media-source.temp {
+        color: #f59e0b;
+      }
       .media-links .btn-link:only-child {
         grid-column: 1 / -1;
       }
@@ -4017,7 +4030,7 @@
           card.append(img, hide);
           const save = saveToPhoneButton(src, "image", dream);
           save.style.marginTop = "10px";
-          card.append(save);
+          card.append(mediaSourceNote(src), save);
 
           const show = el(
             "button",
@@ -4211,7 +4224,11 @@
                 4000,
               );
             } else {
-              toast("Frame developed.");
+              toast(
+                isCloudMediaLink(dream.image)
+                  ? "Frame developed and saved to your cloud."
+                  : "Frame developed.",
+              );
             }
           } catch (err) {
             const message = err?.handled
@@ -4244,6 +4261,28 @@
         /** True for permanent copies the Worker stored in the DREAM_MEDIA R2 bucket. */
         const isCloudMediaLink = (url) =>
           isWebLink(url) && url.startsWith(`${proxyBase()}/media/`);
+
+        /** Small line under a frame/video showing exactly where the file lives. */
+        function mediaSourceNote(url) {
+          const note = el("p", "media-source");
+          if (isCloudMediaLink(url)) {
+            note.append("☁️ Saved in your cloud: ");
+            const a = el("a", "", url.replace(/^https?:\/\//, ""));
+            a.href = url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            note.append(a);
+          } else if (isWebLink(url)) {
+            note.classList.add("temp");
+            note.textContent =
+              getFalKey() || getOpenaiKey()
+                ? "⏳ Temporary link: made with your Developer Override key, so it skipped your cloud. Save it to your phone, or remove the key in ⚙️ Settings to use the cloud."
+                : "⏳ Temporary link: the cloud copy didn’t complete this time. Save it to your phone soon.";
+          } else {
+            note.textContent = "📱 Stored on this phone.";
+          }
+          return note;
+        }
 
         const mediaExtension = (url, kind) => {
           const match =
@@ -4462,6 +4501,7 @@
 
           els.videoArea.replaceChildren(
             video,
+            mediaSourceNote(url),
             save,
             narrateBtn,
             ...(links.childElementCount ? [links] : []),
