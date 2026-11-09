@@ -285,39 +285,27 @@
       .core-action:active {
         transform: scale(0.99);
       }
-      .core-action.diary-open {
+      .diary-section {
+        display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 12px;
       }
-      .core-sub {
-        font-size: 13px;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-        color: var(--amber-dim);
+      .diary-section .list[hidden] {
+        display: none;
+      }
+      .diary-toggle::after {
+        content: "\25BE";
+        font-size: 15px;
+        transition: transform 200ms;
+      }
+      .diary-toggle[aria-expanded="true"]::after {
+        transform: rotate(180deg);
       }
       .diary-empty {
-        padding: 40px 0 8px;
+        padding: 8px 0 2px;
         text-align: center;
         font-size: 15px;
         color: var(--amber-faint);
-      }
-      .diary-panel {
-        z-index: 14;
-      } /* the editor (z 15) opens on top of the diary */
-      .diary-title {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-width: 0;
-      }
-      .diary-title h2 {
-        text-align: center;
-      }
-      .diary-subtitle {
-        font-size: 13px;
-        color: var(--amber-dim);
       }
       .diary-decode {
         display: flex;
@@ -1182,6 +1170,22 @@
         grid-template-columns: 1fr 1fr;
         gap: 10px;
       }
+      /* Prominent, thumb-friendly amber "Save to Phone" button */
+      button.save-phone {
+        width: 100%;
+        min-height: 60px;
+        padding: 12px 18px;
+        border: 2px solid var(--amber);
+        border-radius: 18px;
+        background: #1f1200;
+        color: var(--amber-hi);
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+      button.save-phone:disabled {
+        opacity: 0.6;
+      }
       .media-links .btn-link:only-child {
         grid-column: 1 / -1;
       }
@@ -1318,6 +1322,16 @@
             <button
               type="button"
               class="header-btn"
+              id="headerSettingsBtn"
+              aria-label="Settings and subscriber login"
+              aria-controls="settings"
+              aria-expanded="false"
+            >
+              ⚙️
+            </button>
+            <button
+              type="button"
+              class="header-btn"
               id="exitBtn"
               aria-label="Done: save and exit"
             >
@@ -1342,18 +1356,21 @@
         <button type="button" class="core-action" id="newBtn">
           ➕ New Dream Entry
         </button>
-        <button
-          type="button"
-          class="core-action diary-open"
-          id="diaryBtn"
-          aria-haspopup="dialog"
-        >
-          <span class="core-title">🌙 Dream Diary</span>
-          <span class="core-sub">Previous saved dreams</span>
-        </button>
+        <section class="diary-section" aria-labelledby="diaryBtn">
+          <button
+            type="button"
+            class="core-action diary-toggle"
+            id="diaryBtn"
+            aria-expanded="false"
+            aria-controls="dreamList"
+          >
+            🌙 Past Saved Dreams
+          </button>
+          <div class="list" id="dreamList" hidden></div>
+        </section>
       </div>
 
-      <details id="settings">
+      <details id="settings" hidden>
         <summary>⚙️ Settings</summary>
         <div class="drawer-body">
           <p class="subhead">👤 Subscriber Login (No API Key Needed)</p>
@@ -1549,43 +1566,6 @@
     </main>
 
     <!-- ======================= Dream workspace (full-screen panel) ======================= -->
-    <!-- ======================= Dream Diary (full screen) ======================= -->
-    <section
-      class="workspace diary-panel"
-      id="diary"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="diaryHeading"
-      aria-hidden="true"
-      hidden
-    >
-      <div class="workspace-inner">
-        <header class="ws-header">
-          <button
-            type="button"
-            class="header-btn"
-            id="diaryBackBtn"
-            aria-label="Back to home"
-          >
-            ‹ Home
-          </button>
-          <div class="diary-title">
-            <h2 id="diaryHeading">Dream Diary</h2>
-            <span class="diary-subtitle">Previous saved dreams</span>
-          </div>
-          <button
-            type="button"
-            class="header-btn"
-            id="diaryDoneBtn"
-            aria-label="Done: save and exit"
-          >
-            🌙 Done
-          </button>
-        </header>
-        <div class="list" id="dreamList"></div>
-      </div>
-    </section>
-
     <section
       class="workspace"
       id="workspace"
@@ -2048,9 +2028,7 @@
           wsDoneBtn: $("wsDoneBtn"),
           topNarrateBtn: $("topNarrateBtn"),
           diaryBtn: $("diaryBtn"),
-          diary: $("diary"),
-          diaryBackBtn: $("diaryBackBtn"),
-          diaryDoneBtn: $("diaryDoneBtn"),
+          headerSettingsBtn: $("headerSettingsBtn"),
           accountPill: $("accountPill"),
           subEmail: $("subEmail"),
           subToken: $("subToken"),
@@ -2830,7 +2808,7 @@
                 img.src = image;
                 img.alt = "Storyboard frame for this dream";
                 img.loading = "lazy";
-                body.append(img);
+                body.append(img, saveToPhoneButton(image, "image", dream));
               }
               if (dream.video?.url) {
                 const video = el("video");
@@ -2853,7 +2831,10 @@
                   },
                   { once: true },
                 );
-                body.append(video);
+                body.append(
+                  video,
+                  saveToPhoneButton(dream.video.url, "video", dream),
+                );
               }
               const meaningBlocks = diaryMeanings(dream);
               body.append(...meaningBlocks);
@@ -3755,7 +3736,19 @@
             );
           }
           const inner = data?.result ?? data?.data;
-          return inner && typeof inner === "object" ? inner : data;
+          const result =
+            inner && typeof inner === "object"
+              ? { ...inner }
+              : { ...(data || {}) };
+          const kind = /video/i.test(endpoint)
+            ? "video"
+            : /kokoro|tts|speech/i.test(endpoint)
+              ? "audio"
+              : "image";
+          const cloudLink =
+            cloudLinkFrom(data, kind) || cloudLinkFrom(inner, kind);
+          if (cloudLink) result.cloudLink = cloudLink;
+          return result;
         }
 
         // ---- 1-dream free trial ---------------------------------------------------
@@ -4028,6 +4021,9 @@
 
           const card = el("div", "frame-card");
           card.append(img, hide);
+          const save = saveToPhoneButton(src, "image", dream);
+          save.style.marginTop = "10px";
+          card.append(save);
 
           const show = el(
             "button",
@@ -4145,7 +4141,8 @@
             signal,
             { trial },
           );
-          const src = result?.images?.[0]?.url || result?.image?.url;
+          const src =
+            result?.cloudLink || result?.images?.[0]?.url || result?.image?.url;
           if (!src) throw userError("The server returned no image.");
           return src;
         }
@@ -4194,11 +4191,19 @@
                   })
                 : await openaiImage(openaiKey, prompt, controller.signal);
 
-            sessionImages.set(dream.id, src);
-            const compact = await compressImage(src);
-            dream.image = compact || src; // fall back to the hosted URL if CORS blocks canvas
-            if (persistDreams()) sessionImages.delete(dream.id);
-            else delete dream.image;
+            if (isWebLink(src)) {
+              // Lightweight schema: only the cloud text link is stored, never the pixels.
+              dream.image = src;
+              sessionImages.delete(dream.id);
+              persistDreams();
+            } else {
+              // A raw image came back (OpenAI base64): keep a small copy, full size for this session only.
+              sessionImages.set(dream.id, src);
+              const compact = await compressImage(src);
+              dream.image = compact || src;
+              if (persistDreams()) sessionImages.delete(dream.id);
+              else delete dream.image;
+            }
 
             dream.frameHidden = false;
             persistDreams();
@@ -4238,6 +4243,148 @@
         // =========================================================================
 
         const mediaBlobs = new Map(); // url -> Blob, prefetched so Share works instantly
+
+        const isWebLink = (value) =>
+          typeof value === "string" && /^https?:\/\//i.test(value);
+
+        /**
+         * The Worker clones each finished file into the DREAM_MEDIA R2 bucket and
+         * returns a permanent link. Prefer that cloud link over the short-lived fal.ai one.
+         */
+        function cloudLinkFrom(reply, kind) {
+          if (!reply || typeof reply !== "object") return "";
+          const candidates = [
+            reply.cloudUrl,
+            reply.r2Url,
+            reply.mediaUrl,
+            reply.permanentUrl,
+            reply.storedUrl,
+            kind === "image"
+              ? reply.imageUrl
+              : kind === "video"
+                ? reply.videoUrl
+                : reply.audioUrl,
+            reply.media?.url,
+            reply.cloud?.url,
+          ];
+          return candidates.find(isWebLink) || "";
+        }
+
+        const mediaExtension = (url, kind) => {
+          const match =
+            /\.(png|jpe?g|webp|gif|mp4|mov|webm|mp3|wav|m4a|ogg)(?:[?#]|$)/i.exec(
+              url || "",
+            );
+          if (match) return match[1].toLowerCase().replace("jpeg", "jpg");
+          const dataType = /^data:image\/(png|jpeg|webp)/i.exec(url || "");
+          if (dataType) return dataType[1].toLowerCase().replace("jpeg", "jpg");
+          return kind === "video" ? "mp4" : kind === "audio" ? "wav" : "jpg";
+        };
+
+        function dreamFileName(dream, kind, url) {
+          const when = new Date(dream?.createdAt || Date.now());
+          const stamp = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")}`;
+          const label =
+            kind === "video"
+              ? "video"
+              : kind === "audio"
+                ? "narration"
+                : "frame";
+          return `dream-${stamp}-${label}.${mediaExtension(url, kind)}`;
+        }
+
+        async function blobFor(url) {
+          const cached = mediaBlobs.get(url);
+          if (cached) return cached;
+          const res = await fetch(url, { mode: "cors" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          mediaBlobs.set(url, blob);
+          return blob;
+        }
+
+        function triggerDownload(blob, filename) {
+          const objectUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = objectUrl;
+          a.download = filename;
+          a.rel = "noopener";
+          document.body.append(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+        }
+
+        /**
+         * "⬇️ Save to Phone / Camera Roll":
+         *  - iPhone / Android with file sharing → share sheet ("Save Image" / "Save Video" goes to Photos)
+         *  - otherwise → a real file download (Android saves to Downloads, which the Gallery shows)
+         *  - if the file can't be fetched (offline, blocked) → open it so it can be long-pressed and saved
+         */
+        function saveToPhoneButton(url, kind, dream) {
+          const label = "⬇️ Save to Phone / Camera Roll";
+          const btn = el("button", "save-phone", label);
+          btn.type = "button";
+          btn.setAttribute(
+            "aria-label",
+            `Save this ${kind === "video" ? "video" : kind === "audio" ? "narration" : "image"} to your phone`,
+          );
+          const filename = dreamFileName(dream, kind, url);
+          if (kind !== "video") prefetchMedia(url); // videos are fetched on first tap (they're large)
+
+          btn.addEventListener("click", async () => {
+            const ready = mediaBlobs.get(url);
+            let blob = ready || null;
+            if (!blob) {
+              btn.disabled = true;
+              btn.textContent = "Preparing file…";
+              try {
+                blob = await blobFor(url);
+              } catch {
+                blob = null;
+              }
+              btn.disabled = false;
+              btn.textContent = label;
+            }
+            if (!blob) {
+              window.open(url, "_blank", "noopener");
+              toast(
+                kind === "video"
+                  ? "Opened the video. Tap Share (or ⋮) and choose Save Video."
+                  : "Opened the image. Press and hold it, then choose Save to Photos.",
+                5000,
+              );
+              return;
+            }
+            const file = new File([blob], filename, {
+              type:
+                blob.type ||
+                (kind === "video"
+                  ? "video/mp4"
+                  : kind === "audio"
+                    ? "audio/wav"
+                    : "image/jpeg"),
+            });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              try {
+                await navigator.share({ files: [file], title: "My dream" });
+                return;
+              } catch (err) {
+                if (err?.name === "AbortError") return; // closed the share sheet
+                if (err?.name !== "NotAllowedError") {
+                  triggerDownload(blob, filename);
+                  return;
+                }
+                // Share needs a fresh tap after a slow download: the file is ready now.
+                toast("File ready. Tap Save to Phone again.", 3000);
+                return;
+              }
+            }
+            triggerDownload(blob, filename);
+            toast("Saved to your Downloads.", 2500);
+          });
+          return btn;
+        }
 
         function mediaLink(url, label, filename) {
           const link = el("a", "btn-link", label);
@@ -4310,10 +4457,8 @@
             { once: true },
           );
 
+          const save = saveToPhoneButton(url, "video", dream);
           const links = el("div", "media-links");
-          links.append(
-            mediaLink(url, "⬇️ Save / Share Video", "dream-video.mp4"),
-          );
           const narration = dream?.narration;
           if (narration?.kind === "ai" && narration.audioUrl) {
             links.append(
@@ -4338,7 +4483,13 @@
           status.id = "narrationStatus";
           status.setAttribute("aria-live", "polite");
 
-          els.videoArea.replaceChildren(video, narrateBtn, links, status);
+          els.videoArea.replaceChildren(
+            video,
+            save,
+            narrateBtn,
+            ...(links.childElementCount ? [links] : []),
+            status,
+          );
           if (narration) attachNarration(video, narration, dream.text, status);
         }
 
@@ -4407,6 +4558,7 @@
             signal,
           );
           const url =
+            result?.cloudLink ||
             result?.audio?.url ||
             result?.audio_url?.url ||
             result?.audio_url ||
@@ -4802,6 +4954,7 @@
               { trial },
             );
             const url =
+              result?.cloudLink ||
               result?.video?.url ||
               result?.videos?.[0]?.url ||
               result?.video_url;
@@ -6231,62 +6384,35 @@
           }
         }
 
+        /** Settings stay out of sight on the landing page until the ⚙️ is tapped. */
+        function setSettingsVisible(visible) {
+          els.settings.hidden = !visible;
+          els.settings.open = visible;
+          els.headerSettingsBtn.setAttribute("aria-expanded", String(visible));
+        }
+
         function openSettings() {
           const reveal = () => {
-            els.settings.open = true;
+            setSettingsVisible(true);
             els.settings.scrollIntoView({ behavior: "smooth", block: "start" });
           };
-          if (wsOpen || diaryOpen) {
-            if (wsOpen) closeWorkspace();
-            if (diaryOpen) closeDiary();
+          if (wsOpen) {
+            closeWorkspace();
             setTimeout(reveal, 380);
           } else {
             reveal();
           }
         }
 
-        // ---- Full-screen Dream Diary ------------------------------------------------------
-        let diaryOpen = false;
+        function setDiaryExpanded(expanded) {
+          els.diaryBtn.setAttribute("aria-expanded", String(expanded));
+          els.dreamList.hidden = !expanded;
+          if (expanded) renderList();
+          else
+            for (const v of els.dreamList.querySelectorAll("video")) v.pause();
+        }
+
         let ignorePops = 0; // popstates we caused ourselves via history.back()
-
-        function openDiary() {
-          if (diaryOpen) return;
-          diaryOpen = true;
-          renderList();
-          els.diary.hidden = false;
-          els.diary.setAttribute("aria-hidden", "false");
-          els.diary.scrollTop = 0;
-          document.body.classList.add("ws-open");
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => els.diary.classList.add("open")),
-          );
-          try {
-            history.pushState({ mdcDiary: true }, "");
-          } catch {
-            /* ignored */
-          }
-          setTimeout(() => {
-            if (diaryOpen && !wsOpen)
-              els.diaryBackBtn.focus({ preventScroll: true });
-          }, 360);
-        }
-
-        function closeDiary({ fromHistory = false } = {}) {
-          if (!diaryOpen) return;
-          diaryOpen = false;
-          for (const v of els.diary.querySelectorAll("video")) v.pause();
-          els.diary.classList.remove("open");
-          els.diary.setAttribute("aria-hidden", "true");
-          if (!wsOpen) document.body.classList.remove("ws-open");
-          setTimeout(() => {
-            if (!diaryOpen) els.diary.hidden = true;
-          }, 360);
-          if (!fromHistory) {
-            ignorePops++;
-            history.back();
-          }
-          els.diaryBtn.focus({ preventScroll: true });
-        }
 
         // ---- Full-screen dream workspace ---------------------------------------------
         let wsOpen = false;
@@ -6295,11 +6421,6 @@
         function openWorkspace() {
           if (wsOpen) return;
           wsOpen = true;
-          els.wsBackBtn.textContent = diaryOpen ? "‹ Diary" : "‹ Home";
-          els.wsBackBtn.setAttribute(
-            "aria-label",
-            diaryOpen ? "Back to Dream Diary" : "Back to home",
-          );
           els.workspace.hidden = false;
           els.workspace.setAttribute("aria-hidden", "false");
           els.workspace.scrollTop = 0;
@@ -6328,7 +6449,7 @@
           saveNow();
           els.workspace.classList.remove("open");
           els.workspace.setAttribute("aria-hidden", "true");
-          if (!diaryOpen) document.body.classList.remove("ws-open");
+          document.body.classList.remove("ws-open");
           setTimeout(() => {
             if (!wsOpen) els.workspace.hidden = true;
           }, 360);
@@ -6338,9 +6459,7 @@
           }
           wsHistoryEntry = false;
           renderList();
-          (diaryOpen ? els.diaryBackBtn : els.newBtn).focus({
-            preventScroll: true,
-          });
+          els.newBtn.focus({ preventScroll: true });
         }
 
         // =========================================================================
@@ -6409,9 +6528,18 @@
           openWorkspace();
         });
         els.wsBackBtn.addEventListener("click", () => closeWorkspace());
-        els.diaryBtn.addEventListener("click", openDiary);
-        els.diaryBackBtn.addEventListener("click", () => closeDiary());
-        els.diaryDoneBtn.addEventListener("click", exitApp);
+        els.diaryBtn.addEventListener("click", () =>
+          setDiaryExpanded(
+            els.diaryBtn.getAttribute("aria-expanded") !== "true",
+          ),
+        );
+        els.headerSettingsBtn.addEventListener("click", () => {
+          if (els.settings.hidden) openSettings();
+          else setSettingsVisible(false);
+        });
+        els.settings.addEventListener("toggle", () => {
+          if (!els.settings.open) setSettingsVisible(false);
+        });
         els.wsDoneBtn.addEventListener("click", exitApp);
         window.addEventListener("popstate", () => {
           if (ignorePops > 0) {
@@ -6419,12 +6547,10 @@
             return;
           }
           if (wsOpen) closeWorkspace({ fromHistory: true });
-          else if (diaryOpen) closeDiary({ fromHistory: true });
         });
         document.addEventListener("keydown", (event) => {
           if (event.key !== "Escape" || !els.sleepOverlay.hidden) return;
           if (wsOpen) closeWorkspace();
-          else if (diaryOpen) closeDiary();
         });
         els.topNarrateBtn.addEventListener("click", async () => {
           const dream = currentDream();
