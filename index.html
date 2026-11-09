@@ -1195,6 +1195,12 @@
       }
       .media-source a {
         color: var(--amber);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .media-source.cloud {
+        font-size: 14px;
+        color: #b7791f;
       }
       .media-source.temp {
         color: #f59e0b;
@@ -1594,9 +1600,9 @@
             type="button"
             class="header-btn"
             id="wsBackBtn"
-            aria-label="Back to Dream Diary"
+            aria-label="Back to home"
           >
-            ‹ Diary
+            ‹ Home
           </button>
           <h2 id="dreamHeading">Tonight's Dream</h2>
           <button
@@ -1891,7 +1897,8 @@
           anthropicModel: "mdc.anthropicModel.v1",
           falLlmModel: "mdc.falLlmModel.v1",
           subscriber: "mdc.subscriber.v1",
-          trialUsed: "mdc.hasUsedTrial.v1",
+          trialUsed: "mdc.hasUsedTrial.v1", // legacy (1-creation trial)
+          trialsLeft: "mdc.trialsRemaining.v1",
           deviceId: "mdc.deviceId.v1",
           proxyUrl: "mdc.proxyUrl.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
@@ -3721,7 +3728,7 @@
               res.status === 401 ||
               res.status === 429)
           ) {
-            markTrialUsed(); // the Worker says this device's free creation is spent
+            setTrialsRemaining(0); // the Worker says this device's free creations are spent
             throw Object.assign(userError("Trial Completed."), {
               trialDone: true,
             });
@@ -3753,16 +3760,50 @@
           }
           // The Worker replies with fal's own JSON, spread at the top level, after swapping the
           // media link for its permanent R2 copy: images[0].url, video.url or url becomes
-          // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits and trialCompleted.
-          if (trial && data?.trialCompleted) markTrialUsed();
+          // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits, or remainingTrials for trials.
+          if (trial) recordTrialReply(data);
           return data && typeof data === "object" ? data : {};
         }
 
-        // ---- 1-dream free trial ---------------------------------------------------
-        // One AI image OR video through the proxy for people without a subscription.
-        // The Worker must enforce this too (per device / IP): localStorage alone can
-        // be cleared.
-        const hasUsedTrial = () => readStore(STORAGE.trialUsed, false) === true;
+        // ---- 3-creation free trial ----------------------------------------------------
+        // Three AI images or videos through the proxy per device, before subscribing.
+        // The Worker is the source of truth (it counts per deviceId and returns
+        // remainingTrials); this local counter mirrors its latest answer.
+        const TRIAL_ALLOWANCE = 3;
+        function trialsRemaining() {
+          const stored = Number(readStore(STORAGE.trialsLeft, NaN));
+          if (Number.isFinite(stored))
+            return Math.max(0, Math.min(TRIAL_ALLOWANCE, Math.floor(stored)));
+          // Devices from the old 1-creation trial have used one already.
+          return readStore(STORAGE.trialUsed, false) === true
+            ? TRIAL_ALLOWANCE - 1
+            : TRIAL_ALLOWANCE;
+        }
+        function setTrialsRemaining(count) {
+          const n = Math.max(
+            0,
+            Math.min(TRIAL_ALLOWANCE, Math.floor(Number(count) || 0)),
+          );
+          writeStore(STORAGE.trialsLeft, n);
+          renderAccount();
+          return n;
+        }
+        /** Mirror the Worker's trial balance after a successful trial creation. */
+        function recordTrialReply(data) {
+          const fromWorker = Number(data?.remainingTrials);
+          return setTrialsRemaining(
+            data &&
+              data.remainingTrials !== undefined &&
+              Number.isFinite(fromWorker)
+              ? fromWorker
+              : trialsRemaining() - 1,
+          );
+        }
+        const hasUsedTrial = () => trialsRemaining() <= 0;
+        const freeLeftText = (left) =>
+          left > 0
+            ? `${left} free creation${left === 1 ? "" : "s"} left.`
+            : "That was your last free creation.";
         function getDeviceId() {
           let id = readStore(STORAGE.deviceId, "");
           if (!id) {
@@ -3774,14 +3815,10 @@
           return id;
         }
         let trialInFlight = false;
-        function markTrialUsed() {
-          writeStore(STORAGE.trialUsed, true);
-          renderAccount();
-        }
 
         /**
          * Where an AI request should go.
-         * 'media' (frames, videos): developer key > subscriber > free trial (once).
+         * 'media' (frames, videos): developer key > subscriber > free trial (3 per device).
          * 'extra' (AI narration, AI decoding): developer key > subscriber only.
          */
         function routeAi(kind = "extra") {
@@ -3791,26 +3828,43 @@
           return null;
         }
 
-        /** Shown once the free creation has been used. */
-        function trialDoneNotice(area) {
+        /** The uniform "🔒 Trial Completed" subscriber block. */
+        function trialDoneBox() {
           const actions = el("div", "notice-actions");
           actions.append(
             stripeLink("\uD83D\uDD12 Subscribe for Pro Access (\u00A312/mo)"),
             signInButton(),
           );
-          notice(area, [
+          const box = el("div", "notice trial-done");
+          box.append(
             el("strong", "", "\uD83D\uDD12 Trial Completed."),
             document.createTextNode(
-              " Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.",
+              ` You’ve used all ${TRIAL_ALLOWANCE} free creations. Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.`,
             ),
             actions,
-          ]);
+          );
+          return box;
+        }
+
+        /** Shown once all free creations have been used (replaces the area). */
+        function trialDoneNotice(area) {
+          area.replaceChildren(trialDoneBox());
+        }
+
+        /** After the last free creation: keep the new media and add the block beneath it. */
+        function appendTrialDone(area) {
+          area.querySelector(".trial-done")?.remove();
+          const box = trialDoneBox();
+          box.style.marginTop = "14px";
+          area.append(box);
         }
 
         /** No developer key, no subscriber access: trial used or unavailable. */
         function lockedNotice(area, featureLabel) {
-          if (hasUsedTrial()) trialDoneNotice(area);
-          else accessNotice(area, featureLabel);
+          if (!hasUsedTrial()) return accessNotice(area, featureLabel);
+          // Keep any frame or video already showing; put the block beneath it.
+          if (area.querySelector("img, video")) appendTrialDone(area);
+          else trialDoneNotice(area);
         }
 
         function stripeLink(label = "🔒 Upgrade to Pro (£12/mo)") {
@@ -4171,7 +4225,7 @@
             return;
           }
           if (trialRun && trialInFlight) {
-            toast("Your free trial creation is already on its way.");
+            toast("A free creation is already on its way.");
             return;
           }
           if (trialRun) trialInFlight = true;
@@ -4218,11 +4272,10 @@
               renderFrame(sessionImages.get(dream.id) || dream.image);
             renderList();
             if (trialRun) {
-              markTrialUsed();
-              toast(
-                "Frame developed. That was your free trial creation.",
-                4000,
-              );
+              const left = trialsRemaining();
+              toast(`Frame developed and saved. ${freeLeftText(left)}`, 4000);
+              if (left <= 0 && currentId === dream.id)
+                appendTrialDone(els.frameArea);
             } else {
               toast(
                 isCloudMediaLink(dream.image)
@@ -4266,7 +4319,10 @@
         function mediaSourceNote(url) {
           const note = el("p", "media-source");
           if (isCloudMediaLink(url)) {
-            note.append("☁️ Saved in your cloud: ");
+            note.classList.add("cloud");
+            note.append(
+              "✨ Your creations have been saved at this permanent link for future access: ",
+            );
             const a = el("a", "", url.replace(/^https?:\/\//, ""));
             a.href = url;
             a.target = "_blank";
@@ -4977,14 +5033,17 @@
               result?.video_url;
             if (!url)
               throw userError("The server finished but returned no video.");
-            if (trial) markTrialUsed();
             if (job.cancelled) return;
             completeVideo(dream.id, url);
-            if (trial)
+            if (trial) {
+              const left = trialsRemaining();
               toast(
-                "Your dream video is ready. That was your free trial creation.",
+                `Your dream video is ready and saved. ${freeLeftText(left)}`,
                 4500,
               );
+              if (left <= 0 && currentId === dream.id)
+                appendTrialDone(els.videoArea);
+            }
           } catch (err) {
             if (job.cancelled) return;
             videoJob = null;
@@ -5027,7 +5086,7 @@
             return;
           }
           if (route === "trial" && trialInFlight) {
-            toast("Your free trial creation is already on its way.");
+            toast("A free creation is already on its way.");
             return;
           }
           if (route === "proxy" || route === "trial") {
