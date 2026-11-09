@@ -2825,7 +2825,9 @@
                       el(
                         "p",
                         "hint",
-                        "This video link has expired. Open the dream and generate it again.",
+                        isCloudMediaLink(dream.video.url)
+                          ? "This video couldn’t load right now. Check your connection and try again."
+                          : "This video link has expired. Open the dream and generate it again.",
                       ),
                     );
                   },
@@ -3692,6 +3694,7 @@
 
           const remaining = Number(data?.remainingCredits);
           if (
+            !trial &&
             data &&
             data.remainingCredits !== undefined &&
             Number.isFinite(remaining)
@@ -3735,20 +3738,11 @@
                 : `The Dream Catcher server returned an error (${res.status}).`,
             );
           }
-          const inner = data?.result ?? data?.data;
-          const result =
-            inner && typeof inner === "object"
-              ? { ...inner }
-              : { ...(data || {}) };
-          const kind = /video/i.test(endpoint)
-            ? "video"
-            : /kokoro|tts|speech/i.test(endpoint)
-              ? "audio"
-              : "image";
-          const cloudLink =
-            cloudLinkFrom(data, kind) || cloudLinkFrom(inner, kind);
-          if (cloudLink) result.cloudLink = cloudLink;
-          return result;
+          // The Worker replies with fal's own JSON, spread at the top level, after swapping the
+          // media link for its permanent R2 copy: images[0].url, video.url or url becomes
+          // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits and trialCompleted.
+          if (trial && data?.trialCompleted) markTrialUsed();
+          return data && typeof data === "object" ? data : {};
         }
 
         // ---- 1-dream free trial ---------------------------------------------------
@@ -4142,7 +4136,7 @@
             { trial },
           );
           const src =
-            result?.cloudLink || result?.images?.[0]?.url || result?.image?.url;
+            result?.images?.[0]?.url || result?.url || result?.image?.url;
           if (!src) throw userError("The server returned no image.");
           return src;
         }
@@ -4247,28 +4241,9 @@
         const isWebLink = (value) =>
           typeof value === "string" && /^https?:\/\//i.test(value);
 
-        /**
-         * The Worker clones each finished file into the DREAM_MEDIA R2 bucket and
-         * returns a permanent link. Prefer that cloud link over the short-lived fal.ai one.
-         */
-        function cloudLinkFrom(reply, kind) {
-          if (!reply || typeof reply !== "object") return "";
-          const candidates = [
-            reply.cloudUrl,
-            reply.r2Url,
-            reply.mediaUrl,
-            reply.permanentUrl,
-            reply.storedUrl,
-            kind === "image"
-              ? reply.imageUrl
-              : kind === "video"
-                ? reply.videoUrl
-                : reply.audioUrl,
-            reply.media?.url,
-            reply.cloud?.url,
-          ];
-          return candidates.find(isWebLink) || "";
-        }
+        /** True for permanent copies the Worker stored in the DREAM_MEDIA R2 bucket. */
+        const isCloudMediaLink = (url) =>
+          isWebLink(url) && url.startsWith(`${proxyBase()}/media/`);
 
         const mediaExtension = (url, kind) => {
           const match =
@@ -4450,7 +4425,9 @@
               detachNarration();
               notice(els.videoArea, [
                 document.createTextNode(
-                  "This video link has expired or can’t be played. Generate it again, and save it to your phone soon after.",
+                  isCloudMediaLink(url)
+                    ? "This video couldn’t load right now. Check your connection and try again."
+                    : "This video link has expired or can’t be played. Generate it again, and save it to your phone soon after.",
                 ),
               ]);
             },
@@ -4558,8 +4535,8 @@
             signal,
           );
           const url =
-            result?.cloudLink ||
             result?.audio?.url ||
+            result?.url ||
             result?.audio_url?.url ||
             result?.audio_url ||
             result?.audio_file?.url;
@@ -4954,8 +4931,8 @@
               { trial },
             );
             const url =
-              result?.cloudLink ||
               result?.video?.url ||
+              result?.url ||
               result?.videos?.[0]?.url ||
               result?.video_url;
             if (!url)
