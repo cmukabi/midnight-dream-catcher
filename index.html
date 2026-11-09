@@ -334,6 +334,18 @@
       .diary-meaning strong {
         color: var(--amber-hi);
       }
+      .diary-meaning {
+        padding: 10px 12px;
+        border-left: 3px solid var(--amber-dim);
+        background: #0f0800;
+        border-radius: 0 10px 10px 0;
+      }
+      .diary-question {
+        display: block;
+        margin-top: 6px;
+        font-style: italic;
+        color: var(--amber);
+      }
       .diary-actions {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -1236,7 +1248,7 @@
       </section>
 
       <section aria-labelledby="savedHeading" class="stack">
-        <h2 id="savedHeading">📖 Dream Diary</h2>
+        <h2 id="savedHeading">🌙 Past Saved Dreams</h2>
         <div class="list" id="dreamList"></div>
       </section>
 
@@ -2047,8 +2059,126 @@
          */
 
         /** @type {Dream[]} */
+        /*
+         * Saved Dreams schema (localStorage "mdc.dreams.v1"), one object per dream:
+         *   id            unique id
+         *   timestamp     ms since epoch when the dream was started
+         *   text          the dream transcript
+         *   scenery       { character, appearance, left, right, style, voice, prompt }
+         *   imageUrl      storyboard frame (compact JPEG data URL, or hosted URL)
+         *   videoUrl      5s clip URL
+         *   savedMeaning  { lens, label, text, question, provider, createdAt } for the
+         *                 most recently viewed lens
+         *   meanings      every lens reading { [lens]: {...} }
+         *   narration, frameHidden, meaningLens, meaningOpen, updatedAt  (UI state)
+         * In memory the app uses createdAt / image / video / director; these two
+         * functions translate both ways so older entries keep working.
+         */
+        function sceneryFromDirector(d) {
+          if (!d) return null;
+          return {
+            character: d.character || "",
+            appearance: d.appearance || "",
+            left: d.left || "",
+            right: d.right || "",
+            style: d.style || "cinematic",
+            voice: d.voice || "storyteller",
+            prompt: d.prompt || "",
+            promptEdited: Boolean(d.promptEdited),
+          };
+        }
+
+        function latestMeaning(d) {
+          const meanings = d.meanings || {};
+          const lens =
+            d.meaningLens && meanings[d.meaningLens]
+              ? d.meaningLens
+              : Object.keys(meanings).sort(
+                  (a, b) =>
+                    (meanings[b].createdAt || 0) - (meanings[a].createdAt || 0),
+                )[0];
+          if (!lens || !meanings[lens]) return null;
+          const m = meanings[lens];
+          return {
+            lens,
+            label: interpretationLabel(lens),
+            text: m.reading || "",
+            question: m.question || "",
+            provider: m.mode === "ai" ? m.provider : "Offline symbol guide",
+            createdAt: m.createdAt || null,
+          };
+        }
+
+        function serializeDream(d) {
+          const { image, video, director, createdAt, ...rest } = d;
+          return {
+            ...rest,
+            id: d.id,
+            timestamp: createdAt,
+            text: d.text || "",
+            scenery: sceneryFromDirector(director),
+            imageUrl: image || null,
+            videoUrl: video?.url || null,
+            videoCreatedAt: video?.createdAt || null,
+            savedMeaning: latestMeaning(d),
+          };
+        }
+
+        function deserializeDream(raw) {
+          if (!raw || typeof raw !== "object") return null;
+          const d = { ...raw };
+          d.id =
+            d.id ||
+            `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          d.createdAt = d.createdAt ?? d.timestamp ?? Date.now();
+          d.updatedAt = d.updatedAt ?? d.createdAt;
+          d.text = typeof d.text === "string" ? d.text : "";
+          if (!d.image && d.imageUrl) d.image = d.imageUrl;
+          if (!d.video && d.videoUrl)
+            d.video = {
+              url: d.videoUrl,
+              createdAt: d.videoCreatedAt || d.createdAt,
+            };
+          if (!d.director && d.scenery) d.director = { ...d.scenery };
+          if (
+            !d.meanings &&
+            !d.meaning &&
+            d.savedMeaning?.text &&
+            d.savedMeaning?.lens
+          ) {
+            d.meanings = {
+              [d.savedMeaning.lens]: {
+                mode:
+                  d.savedMeaning.provider &&
+                  d.savedMeaning.provider !== "Offline symbol guide"
+                    ? "ai"
+                    : "offline",
+                provider: d.savedMeaning.provider || "",
+                reading: d.savedMeaning.text,
+                question: d.savedMeaning.question || "",
+                text: (d.text || "").trim().replace(/\s+/g, " "),
+                createdAt: d.savedMeaning.createdAt || d.createdAt,
+                symbols: [],
+              },
+            };
+            d.meaningLens = d.meaningLens || d.savedMeaning.lens;
+          }
+          for (const k of [
+            "timestamp",
+            "imageUrl",
+            "videoUrl",
+            "videoCreatedAt",
+            "scenery",
+            "savedMeaning",
+          ])
+            delete d[k];
+          return d;
+        }
+
         let dreams = readStore(STORAGE.dreams, []);
-        if (!Array.isArray(dreams)) dreams = [];
+        dreams = Array.isArray(dreams)
+          ? dreams.map(deserializeDream).filter(Boolean)
+          : [];
         let currentId = readStore(STORAGE.current, null);
         const sessionImages = new Map(); // full-size frames too big to persist
 
@@ -2060,7 +2190,7 @@
 
         function persistDreams() {
           const ok =
-            writeStore(STORAGE.dreams, dreams) &&
+            writeStore(STORAGE.dreams, dreams.map(serializeDream)) &&
             writeStore(STORAGE.current, currentId);
           if (!ok)
             toast(
@@ -2320,20 +2450,39 @@
             : "(no transcript yet)";
         }
 
+        /** Hoisted, self-contained: safe to call from storage code at any time. */
+        function interpretationLabel(lens) {
+          return (
+            {
+              biblical: "\u271D\uFE0E Biblical Interpretation",
+              jungian: "\uD83E\uDDE0 Jungian Interpretation",
+              emotional: "\uD83D\uDCAD Waking Life Interpretation",
+              creative: "\uD83C\uDFAC Story Spark",
+              islamic: "\uD83D\uDD4C Islamic Interpretation",
+            }[lens] || lens
+          );
+        }
+
+        /** Saved readings, most recently viewed lens first, each under its lens label. */
         function diaryMeanings(dream) {
           const meanings = getMeanings(dream);
-          const out = [];
-          for (const lens of Object.keys(LENSES)) {
+          const lenses = Object.keys(LENSES).filter((l) => meanings[l]);
+          if (dream.meaningLens && meanings[dream.meaningLens]) {
+            lenses.sort((a, b) =>
+              a === dream.meaningLens ? -1 : b === dream.meaningLens ? 1 : 0,
+            );
+          }
+          return lenses.map((lens) => {
             const r = meanings[lens];
-            if (!r) continue;
-            const p = el("p", "diary-meaning");
-            p.append(
-              el("strong", "", `${LENSES[lens].label}: `),
+            const block = el("div", "diary-meaning");
+            block.append(
+              el("strong", "", `${interpretationLabel(lens)}: `),
               document.createTextNode(r.reading),
             );
-            out.push(p);
-          }
-          return out;
+            if (r.question)
+              block.append(el("span", "diary-question", r.question));
+            return block;
+          });
         }
 
         function renderList() {
