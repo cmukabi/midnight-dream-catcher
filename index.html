@@ -2251,7 +2251,7 @@
         ];
         const VIDEO_POLL_MS = 3000;
         const VIDEO_MAX_WAIT_MS = 15 * 60 * 1000;
-        const VIDEO_TYPICAL_MS = 180 * 1000; // shapes the progress bar curve (MiniMax ~3-5 min)
+        const VIDEO_TYPICAL_MS = 75 * 1000; // shapes the progress bar curve (Ray 2 Flash image-to-video)
         const PENDING_RESUME_MAX_AGE_MS = 60 * 60 * 1000;
 
         const OPENAI_ENDPOINT = "https://api.openai.com/v1/images/generations";
@@ -4023,7 +4023,12 @@
           endpoint,
           payload,
           signal,
-          { trial = false, dreamId = currentId } = {},
+          {
+            trial = false,
+            dreamId = currentId,
+            path = "/generate",
+            recordTrial = true,
+          } = {},
         ) {
           const email = trial ? "" : getSubscriberEmail();
           const token = trial ? "" : getSubscriberToken();
@@ -4040,7 +4045,7 @@
             : { email, token, dreamId, endpoint, payload };
           let res;
           try {
-            res = await fetch(`${proxyBase()}/generate`, {
+            res = await fetch(`${proxyBase()}${path}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
@@ -4068,12 +4073,14 @@
           )
             setCredits(remaining);
 
+          if (trial && res.status === 429) {
+            throw userError(
+              data?.error || "This free dream has reached its limit for now.",
+            );
+          }
           if (
             trial &&
-            (res.status === 403 ||
-              res.status === 402 ||
-              res.status === 401 ||
-              res.status === 429)
+            (res.status === 403 || res.status === 402 || res.status === 401)
           ) {
             setTrialsRemaining(0); // the Worker says this device's free creations are spent
             throw Object.assign(userError("Trial Completed."), {
@@ -4108,7 +4115,7 @@
           // The Worker replies with fal's own JSON, spread at the top level, after swapping the
           // media link for its permanent R2 copy: images[0].url, video.url or url becomes
           // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits, or remainingTrials for trials.
-          if (trial) recordTrialReply(data, dreamId);
+          if (trial && recordTrial) recordTrialReply(data, dreamId);
           lastProxyShortLink = shortLinkFrom(data);
           return data && typeof data === "object" ? data : {};
         }
@@ -5556,7 +5563,173 @@
          * Subscriber path: one long POST to the Worker, which renders on fal.ai
          * and replies with the finished video. Progress is time-based.
          */
+        /**
+         * Queued render through the Worker: POST /video/start → { jobId }, then
+         * /video/status every few seconds. Survives a locked screen, switching apps and
+         * closing the app (it resumes on reopen). Falls back to the one-shot /generate
+         * call if the Worker doesn't have the queued routes yet.
+         */
         async function generateVideoViaProxy(
+          prompt,
+          imageUrl,
+          { trial = false } = {},
+        ) {
+          const dream = ensureCurrentDream();
+          persistDreams();
+          const model = getFalVideoModel();
+          const startedAt = Date.now();
+          els.videoArea.replaceChildren();
+          const job = {
+            dreamId: dream.id,
+            cancelled: false,
+            proxy: true,
+            proxyJob: "",
+          };
+          videoJob = job;
+          setVideoBusy(true);
+          showProgress({
+            label: "✨ Painting your dream frames…",
+            fraction: 0.04,
+            cancellable: true,
+          });
+          let start;
+          try {
+            start = await proxyGenerate(
+              model,
+              videoPayload(model, prompt, imageUrl),
+              undefined,
+              {
+                trial,
+                dreamId: dream.id,
+                path: "/video/start",
+                recordTrial: false,
+              },
+            );
+          } catch (err) {
+            if (job.cancelled) return;
+            if (err?.handled && /\(404\)/.test(err.message)) {
+              // Older Worker without the queue routes: use the one-shot render instead.
+              videoJob = null;
+              setVideoBusy(false);
+              return generateVideoViaProxyOneShot(prompt, imageUrl, { trial });
+            }
+            videoJob = null;
+            setVideoBusy(false);
+            if (currentId === dream.id) {
+              hideProgress();
+              handleAiError(
+                els.videoArea,
+                err,
+                "Could not reach the Dream Catcher server. Check your connection and try again.",
+              );
+            } else {
+              toast(err?.message || "The video could not be started.", 4500);
+            }
+            return;
+          }
+          if (job.cancelled) {
+            if (start?.jobId) proxyCancel(start.jobId);
+            return;
+          }
+          if (!start?.jobId) {
+            // Older Worker (no queue routes) answers with plain text: use the one-shot render.
+            videoJob = null;
+            setVideoBusy(false);
+            return generateVideoViaProxyOneShot(prompt, imageUrl, { trial });
+          }
+          job.proxyJob = start.jobId;
+          dream.pendingVideo = { proxyJob: start.jobId, trial, startedAt };
+          persistDreams();
+          renderList();
+          await pollProxyVideo(dream.id);
+        }
+
+        function proxyCancel(jobId) {
+          fetch(`${proxyBase()}/video/cancel`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId }),
+          }).catch(() => {});
+        }
+
+        /** Checks a queued Worker render until it finishes; resumes after reloads via pendingVideo. */
+        async function pollProxyVideo(dreamId) {
+          const dream = findDream(dreamId);
+          const pending = dream?.pendingVideo;
+          if (!dream || !pending?.proxyJob) return;
+          if (!videoJob) {
+            videoJob = {
+              dreamId,
+              cancelled: false,
+              proxy: true,
+              proxyJob: pending.proxyJob,
+            };
+            setVideoBusy(true);
+          }
+          const job = videoJob;
+          try {
+            while (!job.cancelled) {
+              if (Date.now() - pending.startedAt > VIDEO_MAX_WAIT_MS) {
+                throw userError(
+                  "The video is taking unusually long. Reopen the app later and it will check again.",
+                );
+              }
+              let data = null;
+              try {
+                const res = await fetch(`${proxyBase()}/video/status`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ jobId: pending.proxyJob }),
+                });
+                data = await res.json().catch(() => null);
+              } catch {
+                data = null; // phone asleep, lift, tunnel: keep waiting
+              }
+              if (job.cancelled) return;
+              if (data?.status === "FAILED")
+                throw userError(
+                  data.error || "The video could not be rendered. Try again.",
+                );
+              if (data?.status === "COMPLETED") {
+                const url = data?.video?.url;
+                if (!url)
+                  throw userError("The server finished but returned no video.");
+                if (pending.trial) recordTrialReply(data, dreamId);
+                else if (Number.isFinite(Number(data.remainingCredits)))
+                  setCredits(Number(data.remainingCredits));
+                const news = pending.trial ? takeTrialNews() : "";
+                completeVideo(dreamId, url, { quiet: true });
+                toast(
+                  news
+                    ? `Your dream video is ready and saved. ${news}`
+                    : "Your dream video is ready and saved to your cloud.",
+                  news ? 5000 : 3500,
+                );
+                return;
+              }
+              if (currentId === dreamId) {
+                const elapsed = Date.now() - pending.startedAt;
+                const fraction = Math.min(
+                  0.95,
+                  0.05 + 0.9 * (1 - Math.exp(-elapsed / VIDEO_TYPICAL_MS)),
+                );
+                const label =
+                  data?.status === "IN_QUEUE"
+                    ? `🌙 Waiting for a free studio${Number.isFinite(data.queuePosition) && data.queuePosition > 0 ? ` (position ${data.queuePosition + 1})` : ""}… · ${formatElapsed(elapsed)}`
+                    : `${loaderLine(elapsed)} · ${formatElapsed(elapsed)}`;
+                showProgress({ label, fraction, cancellable: true });
+              }
+              await sleep(VIDEO_POLL_MS);
+            }
+          } catch (err) {
+            if (!job.cancelled)
+              failVideo(dreamId, err, {
+                keepPending: /unusually long/.test(err?.message || ""),
+              });
+          }
+        }
+
+        async function generateVideoViaProxyOneShot(
           prompt,
           imageUrl,
           { trial = false } = {},
@@ -5613,7 +5786,7 @@
               throw userError("The server finished but returned no video.");
             if (job.cancelled) return;
             const shortLink = lastProxyShortLink;
-            completeVideo(dream.id, url);
+            completeVideo(dream.id, url, { quiet: true });
             const saved = findDream(dream.id);
             if (saved && shortLink) {
               saved.links = { ...(saved.links || {}), video: shortLink };
@@ -5820,7 +5993,7 @@
           }
         }
 
-        function completeVideo(dreamId, url) {
+        function completeVideo(dreamId, url, { quiet = false } = {}) {
           const dream = findDream(dreamId);
           if (dream) {
             dream.video = { url, createdAt: Date.now() };
@@ -5842,7 +6015,7 @@
             });
           }
           renderList();
-          toast("Your dream video is ready.", 3500);
+          if (!quiet) toast("Your dream video is ready.", 3500);
         }
 
         function failVideo(dreamId, err, { keepPending = false } = {}) {
@@ -5871,7 +6044,8 @@
           job.cancelled = true;
           const dream = findDream(job.dreamId);
           const key = getFalKey();
-          job.controller?.abort(); // subscriber (proxy) render
+          job.controller?.abort(); // one-shot proxy render
+          if (job.proxyJob) proxyCancel(job.proxyJob); // queued proxy render
           if (job.cancelUrl && key) {
             fetch(job.cancelUrl, {
               method: "PUT",
@@ -5905,7 +6079,8 @@
           for (const d of dreams) {
             if (d.pendingVideo && d !== pending) delete d.pendingVideo; // stale
           }
-          if (pending && getFalKey()) pollVideo(pending.id);
+          if (pending?.pendingVideo?.proxyJob) pollProxyVideo(pending.id);
+          else if (pending && getFalKey()) pollVideo(pending.id);
         }
 
         // =========================================================================
