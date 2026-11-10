@@ -1684,7 +1684,7 @@
                   autocomplete="off"
                   autocapitalize="off"
                   spellcheck="false"
-                  placeholder="fal-ai/luma-dream-machine/ray-2-flash/image-to-video"
+                  placeholder="fal-ai/luma-dream-machine/image-to-video"
                 />
                 <label for="falTtsModel">Narration Model ID</label>
                 <input
@@ -2210,10 +2210,10 @@
         const FAL_SYNC_BASE = "https://fal.run/";
         const FAL_QUEUE_BASE = "https://queue.fal.run/";
         const DEFAULT_FAL_IMAGE_MODEL = "fal-ai/flux/schnell";
-        // Image-to-video: animates the storyboard frame (much faster than text-to-video).
-        // fal's original Luma Dream Machine I2V endpoint is deprecated; Ray 2 Flash is its fast successor.
+        // Image-to-video: animates the storyboard frame. Absolute fallback when the
+        // ⚙️ Settings "Video Model ID" field is blank.
         const DEFAULT_FAL_VIDEO_MODEL =
-          "fal-ai/luma-dream-machine/ray-2-flash/image-to-video";
+          "fal-ai/luma-dream-machine/image-to-video";
         const DEFAULT_FAL_TTS_MODEL = "fal-ai/kokoro/american-english";
         const NARRATION_MAX_CHARS = 2000;
         const TTS_TIMEOUT_MS = 90000;
@@ -2252,7 +2252,6 @@
         const RETIRED_FAL_VIDEO_MODELS = [
           "fal-ai/luma-dream-machine/ray-2",
           "fal-ai/luma-dream-machine",
-          "fal-ai/luma-dream-machine/image-to-video",
           "fal-ai/minimax/video-01",
         ];
         const VIDEO_POLL_MS = 3000;
@@ -3547,11 +3546,12 @@
         const getFalTtsModel = () =>
           normaliseModelId(readStore(STORAGE.falTtsModel, "")) ||
           DEFAULT_FAL_TTS_MODEL;
+        /** Video endpoint for every render: the Settings field if filled in, otherwise the default. */
         const getFalVideoModel = () => {
           const saved = normaliseModelId(readStore(STORAGE.falVideoModel, ""));
-          return saved && !RETIRED_FAL_VIDEO_MODELS.includes(saved)
-            ? saved
-            : DEFAULT_FAL_VIDEO_MODEL;
+          if (!saved || RETIRED_FAL_VIDEO_MODELS.includes(saved))
+            return DEFAULT_FAL_VIDEO_MODEL; // blank → 'fal-ai/luma-dream-machine/image-to-video'
+          return saved;
         };
         /** Classifies a pasted key by its prefix. */
         const keyKind = (raw) => {
