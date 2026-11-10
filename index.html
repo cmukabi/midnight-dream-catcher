@@ -467,6 +467,97 @@
       .diary-jump[hidden] {
         display: none;
       }
+      .diary-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 2px 0 14px;
+      }
+      .diary-tabs button {
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid var(--line, #2a1a00);
+        background: #050300;
+        color: var(--amber-dim);
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .diary-tabs button[aria-selected="true"] {
+        border: 2px solid var(--amber);
+        background: #120a00;
+        color: var(--amber-hi);
+      }
+      [role="tabpanel"][hidden] {
+        display: none;
+      }
+      .cloud-room-head {
+        margin: 0 0 12px;
+        color: var(--amber-dim);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .room-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .room-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      .room-media {
+        display: block;
+        position: relative;
+        aspect-ratio: 16 / 9;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--line, #2a1a00);
+        background: #0a0600;
+      }
+      .room-media img,
+      .room-media video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .room-media .room-audio {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 34px;
+      }
+      .room-badge {
+        position: absolute;
+        left: 6px;
+        top: 6px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.72);
+        color: var(--amber-hi);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .room-caption {
+        font-size: 12px;
+        line-height: 1.35;
+        color: var(--amber-dim);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .room-save {
+        min-height: 40px;
+        border-radius: 12px;
+        border: 1px solid var(--amber-dim);
+        background: #120a00;
+        color: var(--amber-hi);
+        font-size: 13px;
+        font-weight: 700;
+      }
       .diary-decode {
         display: flex;
         flex-direction: column;
@@ -1379,6 +1470,35 @@
         font-size: 14px;
         color: #b7791f;
       }
+      .story-section {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line, #2a1a00);
+      }
+      .story-section:empty {
+        display: none;
+      }
+      .story-section .subhead {
+        margin: 0;
+      }
+      .story-section video {
+        width: 100%;
+        border-radius: 14px;
+        background: #000;
+      }
+      button.story-btn {
+        width: 100%;
+        min-height: 56px;
+        border: 2px solid var(--amber-dim);
+        border-radius: 16px;
+        background: #120a00;
+        color: var(--amber-hi);
+        font-weight: 700;
+        font-size: 16px;
+      }
       .video-error a {
         color: var(--amber-hi);
         font-weight: 700;
@@ -1866,9 +1986,38 @@
             🌙 Done
           </button>
         </header>
-        <label class="sr-only" for="diaryJump">Jump to a dream by date</label>
-        <select id="diaryJump" class="diary-jump" hidden></select>
-        <div class="list" id="dreamList"></div>
+        <div class="diary-tabs" role="tablist" aria-label="Dream Diary views">
+          <button
+            type="button"
+            role="tab"
+            id="tabDreams"
+            aria-selected="true"
+            aria-controls="dreamsView"
+          >
+            🌙 Dreams
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tabRoom"
+            aria-selected="false"
+            aria-controls="cloudRoom"
+          >
+            ☁️ Cloud Room
+          </button>
+        </div>
+        <div id="dreamsView" role="tabpanel" aria-labelledby="tabDreams">
+          <label class="sr-only" for="diaryJump">Jump to a dream by date</label>
+          <select id="diaryJump" class="diary-jump" hidden></select>
+          <div class="list" id="dreamList"></div>
+        </div>
+        <div
+          id="cloudRoom"
+          class="cloud-room"
+          role="tabpanel"
+          aria-labelledby="tabRoom"
+          hidden
+        ></div>
       </div>
     </section>
 
@@ -2346,6 +2495,10 @@
           diaryBackBtn: $("diaryBackBtn"),
           diaryDoneBtn: $("diaryDoneBtn"),
           diaryJump: $("diaryJump"),
+          tabDreams: $("tabDreams"),
+          tabRoom: $("tabRoom"),
+          dreamsView: $("dreamsView"),
+          cloudRoom: $("cloudRoom"),
           settingsModal: $("settingsModal"),
           settingsCloseBtn: $("settingsCloseBtn"),
           lockModal: $("lockModal"),
@@ -3139,6 +3292,7 @@
             const icons = [];
             if (dream.image || sessionImages.has(dream.id)) icons.push("🖼️");
             if (dream.video) icons.push("🎬");
+            if (dream.story?.url) icons.push("🔊");
             if (dream.pendingVideo) icons.push("⏳");
             if (dream.narration) icons.push("🎙️");
             if (hasMeanings(dream)) icons.push("🔮");
@@ -3195,6 +3349,21 @@
                   mediaSourceNote(dream.video.url, "video", dream.links?.video),
                   saveToPhoneButton(dream.video.url, "video", dream),
                 );
+                if (dream.story?.url) {
+                  const story = el("video");
+                  story.src = dream.story.url;
+                  story.controls = true;
+                  story.playsInline = true;
+                  story.setAttribute("playsinline", "");
+                  story.preload = "metadata";
+                  handleVideoError(story, dream.story.url);
+                  body.append(
+                    el("p", "subhead", "🎬 Video with Voice"),
+                    story,
+                    mediaSourceNote(dream.story.url, "story"),
+                    saveToPhoneButton(dream.story.url, "video", dream),
+                  );
+                }
               }
               const meaningBlocks = diaryMeanings(dream);
               body.append(...meaningBlocks);
@@ -4832,13 +5001,19 @@
             jobs.push(["image", dream.image]);
           if (isWebLink(dream.video?.url) && !isCloudMediaLink(dream.video.url))
             jobs.push(["video", dream.video.url]);
+          if (isWebLink(dream.story?.url) && !isCloudMediaLink(dream.story.url))
+            jobs.push(["story", dream.story.url]);
           for (const [kind, url] of jobs) {
             if (archiving.has(url) || archiveDead.has(url)) continue;
             archiving.add(url);
             rerenderMediaFor(dreamId);
             let cloud = "";
             try {
-              cloud = await archiveToCloud(url, kind, dreamId);
+              cloud = await archiveToCloud(
+                url,
+                kind === "story" ? "video" : kind,
+                dreamId,
+              );
             } catch {
               cloud = "";
             }
@@ -4848,6 +5023,8 @@
               if (kind === "image" && fresh.image === url) fresh.image = cloud;
               if (kind === "video" && fresh.video?.url === url)
                 fresh.video = { ...fresh.video, url: cloud };
+              if (kind === "story" && fresh.story?.url === url)
+                fresh.story = { ...fresh.story, url: cloud };
               persistDreams();
             }
             rerenderMediaFor(dreamId);
@@ -4895,7 +5072,14 @@
           const note = el("p", "media-source");
           if (isCloudMediaLink(url)) {
             note.classList.add("cloud");
-            const what = kind === "video" ? "video" : "frame";
+            const what =
+              kind === "story"
+                ? "video with voice"
+                : kind === "video"
+                  ? "video"
+                  : kind === "audio"
+                    ? "narration"
+                    : "frame";
             note.append(
               `✨ Your ${what} has been saved permanently to your private cloud room for future access: `,
             );
@@ -5122,6 +5306,266 @@
           });
         }
 
+        // ---- 🎬 Video with Voice: the 5s clip looped under the AI narration, as one MP4 ----
+        const storyJobs = new Set(); // dream IDs being composed right now
+
+        /** Reads how long an audio/video file is (ms), or 0 if it can't be read. */
+        function mediaDuration(url, tag = "audio") {
+          return new Promise((resolve) => {
+            const media = document.createElement(tag);
+            let done = false;
+            const finish = (ms) => {
+              if (!done) {
+                done = true;
+                media.removeAttribute("src");
+                resolve(ms);
+              }
+            };
+            media.preload = "metadata";
+            media.muted = true;
+            media.addEventListener(
+              "loadedmetadata",
+              () =>
+                finish(
+                  Number.isFinite(media.duration)
+                    ? Math.round(media.duration * 1000)
+                    : 0,
+                ),
+              { once: true },
+            );
+            media.addEventListener("error", () => finish(0), { once: true });
+            setTimeout(() => finish(0), 10000);
+            media.src = url;
+          });
+        }
+
+        /** Timeline for fal-ai/ffmpeg-api/compose: clip repeated for the whole narration. */
+        function storyTracks(videoUrl, clipMs, audioUrl, audioMs) {
+          const total = Math.max(clipMs, Math.min(audioMs, 180000)); // narration is capped at 3 minutes
+          const frames = [];
+          for (let t = 0; t < total; t += clipMs)
+            frames.push({
+              timestamp: t,
+              duration: Math.min(clipMs, total - t),
+              url: videoUrl,
+            });
+          return {
+            tracks: [
+              { id: "dream-clip", type: "video", keyframes: frames },
+              {
+                id: "dream-voice",
+                type: "audio",
+                keyframes: [{ timestamp: 0, duration: total, url: audioUrl }],
+              },
+            ],
+          };
+        }
+
+        function storySection(dream) {
+          const box = el("div", "story-section");
+          if (!dream?.video?.url) return box;
+          box.append(el("p", "subhead", "🎬 Video with Voice"));
+          const narration = dream.narration;
+          const story = dream.story;
+          if (story?.url) {
+            const player = el("video");
+            player.src = story.url;
+            player.controls = true;
+            player.playsInline = true;
+            player.setAttribute("playsinline", "");
+            player.preload = "metadata";
+            handleVideoError(player, story.url);
+            box.append(
+              player,
+              mediaSourceNote(story.url, "story"),
+              saveToPhoneButton(story.url, "video", dream),
+            );
+          }
+          if (narration?.kind === "ai" && narration.audioUrl) {
+            const stale = story?.url && story.audioUrl !== narration.audioUrl;
+            if (!story?.url || stale) {
+              const btn = el(
+                "button",
+                "story-btn",
+                storyJobs.has(dream.id)
+                  ? "🎬 Adding the voice…"
+                  : stale
+                    ? "🔄 Remake Video with Voice (new narration)"
+                    : "🎬 Make Video with Voice",
+              );
+              btn.type = "button";
+              btn.disabled = storyJobs.has(dream.id);
+              btn.addEventListener("click", () =>
+                makeStoryVideo(dream.id, btn),
+              );
+              box.append(btn);
+              if (!story?.url)
+                box.append(
+                  el(
+                    "p",
+                    "hint",
+                    "Joins your narration and the clip into one shareable video. The clip loops for as long as the voice speaks.",
+                  ),
+                );
+            }
+          } else if (!story?.url) {
+            box.append(
+              el(
+                "p",
+                "hint",
+                narration?.kind === "device"
+                  ? "To make a shareable video with the voice built in, choose an AI voice in 🎬 Director (Storyteller, Whisper or Noir) and tap 🎙️ Re-record Narration."
+                  : "The 5s clip is silent. Tap 🎙️ Add Voice Narration with an AI voice, then make a shareable video with the voice built in.",
+              ),
+            );
+          }
+          return box;
+        }
+
+        async function makeStoryVideo(dreamId, button) {
+          const dream = findDream(dreamId);
+          const narration = dream?.narration;
+          if (
+            !dream?.video?.url ||
+            narration?.kind !== "ai" ||
+            !narration.audioUrl ||
+            storyJobs.has(dreamId)
+          )
+            return;
+          const route = routeAi("extra");
+          if (!route) {
+            lockedNotice(els.videoArea, "🎬 Videos with voice");
+            return;
+          }
+          storyJobs.add(dreamId);
+          const startedAt = Date.now();
+          const tick = setInterval(() => {
+            if (button.isConnected)
+              button.textContent = `🎬 Adding the voice… ${formatElapsed(Date.now() - startedAt)}`;
+          }, 1000);
+          button.disabled = true;
+          button.textContent = "🎬 Adding the voice…";
+          holdWake("story");
+          try {
+            const [audioMs, clipMs] = await Promise.all([
+              mediaDuration(narration.audioUrl, "audio"),
+              mediaDuration(dream.video.url, "video"),
+            ]);
+            if (!audioMs)
+              throw userError(
+                "Couldn’t read the narration’s length. Re-record the narration and try again.",
+              );
+            const payload = storyTracks(
+              dream.video.url,
+              clipMs || 5000,
+              narration.audioUrl,
+              audioMs,
+            );
+            const model = "fal-ai/ffmpeg-api/compose";
+            let url = "";
+            if (route === "dev") {
+              const key = getFalKey();
+              const res = await fetch(FAL_QUEUE_BASE + model, {
+                method: "POST",
+                headers: falHeaders(key),
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok)
+                throw userError(
+                  friendlyFalError(res.status, await readFalError(res), model),
+                );
+              const ticket = await res.json();
+              while (true) {
+                if (Date.now() - startedAt > 10 * 60 * 1000)
+                  throw userError("Adding the voice took too long. Try again.");
+                await sleep(VIDEO_POLL_MS);
+                const st = await fetch(
+                  `${ticket.status_url}${ticket.status_url.includes("?") ? "&" : "?"}logs=0`,
+                  { headers: falHeaders(key) },
+                )
+                  .then((r) => r.json())
+                  .catch(() => null);
+                if (st?.status === "COMPLETED") break;
+              }
+              const out = await fetch(ticket.response_url, {
+                headers: falHeaders(key),
+              }).then((r) => r.json());
+              url = out?.video_url || out?.video?.url || "";
+              if (url && !isCloudMediaLink(url))
+                url =
+                  (await archiveToCloud(url, "video", dreamId).catch(
+                    () => "",
+                  )) || url;
+            } else {
+              const trial = route === "trial" && !hasSubscriberAccess();
+              const start = await proxyGenerate(model, payload, undefined, {
+                trial,
+                dreamId,
+                path: "/video/start",
+                recordTrial: false,
+              });
+              if (!start?.jobId)
+                throw userError(
+                  "Your Worker needs updating to make videos with voice. Deploy the latest worker.js.",
+                );
+              while (true) {
+                if (Date.now() - startedAt > 10 * 60 * 1000)
+                  throw userError("Adding the voice took too long. Try again.");
+                await sleep(VIDEO_POLL_MS);
+                const data = await fetch(`${proxyBase()}/video/status`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ jobId: start.jobId }),
+                })
+                  .then((r) => r.json())
+                  .catch(() => null);
+                if (data?.status === "FAILED")
+                  throw userError(
+                    data.error || "The voice couldn’t be added. Try again.",
+                  );
+                if (data?.status === "COMPLETED") {
+                  url = data?.video?.url || "";
+                  if (trial) recordTrialReply(data, dreamId);
+                  else if (Number.isFinite(Number(data.remainingCredits)))
+                    setCredits(Number(data.remainingCredits));
+                  break;
+                }
+              }
+            }
+            if (!url)
+              throw userError(
+                "The voice was added but no video came back. Try again.",
+              );
+            const fresh = findDream(dreamId);
+            if (fresh) {
+              fresh.story = {
+                url,
+                audioUrl: narration.audioUrl,
+                createdAt: Date.now(),
+              };
+              persistDreams();
+            }
+            toast(
+              "🎬 Your video with voice is ready and saved to your cloud.",
+              4000,
+            );
+          } catch (err) {
+            toast(
+              err?.handled
+                ? err.message
+                : "The voice couldn’t be added. Check your connection and try again.",
+              5000,
+            );
+          } finally {
+            clearInterval(tick);
+            storyJobs.delete(dreamId);
+            releaseWake("story");
+            if (currentId === dreamId && findDream(dreamId)?.video?.url)
+              renderVideo(findDream(dreamId).video.url);
+            renderList();
+          }
+        }
+
         function renderVideo(url) {
           detachNarration();
           const dream = currentDream();
@@ -5168,6 +5612,7 @@
             narrateBtn,
             ...(links.childElementCount ? [links] : []),
             status,
+            storySection(dream),
           );
           if (narration) attachNarration(video, narration, dream.text, status);
         }
@@ -7405,6 +7850,7 @@
           if (diaryOpen) return;
           diaryOpen = true;
           renderList();
+          setDiaryTab(false);
           rescueOlderMedia();
           els.diary.hidden = false;
           els.diary.setAttribute("aria-hidden", "false");
@@ -7439,6 +7885,167 @@
             history.back();
           }
           els.diaryBtn.focus({ preventScroll: true });
+        }
+
+        // ---- ☁️ Cloud Room: every frame, video, voice video and narration in one place ----
+        let roomTab = false;
+        let roomRemote = null; // items from the Worker's /room (account + this phone)
+        let roomLoading = false;
+
+        function setDiaryTab(room) {
+          roomTab = room;
+          els.tabDreams.setAttribute("aria-selected", String(!room));
+          els.tabRoom.setAttribute("aria-selected", String(room));
+          els.dreamsView.hidden = room;
+          els.cloudRoom.hidden = !room;
+          if (room) {
+            renderCloudRoom();
+            loadRemoteRoom();
+          } else {
+            for (const v of els.cloudRoom.querySelectorAll("video")) v.pause();
+          }
+        }
+
+        /** Files saved on this phone (from its dreams). */
+        function localRoomItems() {
+          const items = [];
+          for (const d of dreams) {
+            const base = {
+              dreamId: d.id,
+              createdAt: d.createdAt,
+              text: d.text,
+            };
+            if (isWebLink(d.image))
+              items.push({ ...base, url: d.image, kind: "image" });
+            if (isWebLink(d.video?.url))
+              items.push({
+                ...base,
+                url: d.video.url,
+                kind: "video",
+                createdAt: d.video.createdAt || d.createdAt,
+              });
+            if (isWebLink(d.story?.url))
+              items.push({
+                ...base,
+                url: d.story.url,
+                kind: "story",
+                createdAt: d.story.createdAt || d.createdAt,
+              });
+            if (d.narration?.kind === "ai" && isWebLink(d.narration.audioUrl))
+              items.push({ ...base, url: d.narration.audioUrl, kind: "audio" });
+          }
+          return items;
+        }
+
+        async function loadRemoteRoom() {
+          if (roomLoading) return;
+          roomLoading = true;
+          try {
+            const res = await fetch(`${proxyBase()}/room`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: getSubscriberEmail(),
+                token: getSubscriberToken(),
+                deviceId: getDeviceId(),
+              }),
+            });
+            const data = await res.json().catch(() => null);
+            if (res.ok && Array.isArray(data?.items)) roomRemote = data;
+          } catch {
+            /* offline or older Worker: the phone's own files still show */
+          }
+          roomLoading = false;
+          if (roomTab && diaryOpen) renderCloudRoom();
+        }
+
+        const ROOM_KIND = {
+          image: { badge: "🖼️ Frame", file: "frame" },
+          video: { badge: "🎬 Video", file: "video" },
+          story: { badge: "🔊 Video + voice", file: "video" },
+          audio: { badge: "🎙️ Narration", file: "audio" },
+        };
+
+        function renderCloudRoom() {
+          const local = localRoomItems();
+          const byUrl = new Map();
+          for (const item of local) byUrl.set(item.url, item);
+          for (const item of roomRemote?.items || []) {
+            if (!byUrl.has(item.url))
+              byUrl.set(item.url, { ...item, remote: true });
+            else if (!byUrl.get(item.url).kind)
+              byUrl.get(item.url).kind = item.kind;
+          }
+          const items = [...byUrl.values()]
+            .filter((i) => ROOM_KIND[i.kind])
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          const cloudCount = items.filter((i) =>
+            isCloudMediaLink(i.url),
+          ).length;
+          const fromElsewhere = items.filter((i) => i.remote).length;
+
+          const head = el(
+            "p",
+            "cloud-room-head",
+            items.length === 0
+              ? roomLoading
+                ? "Opening your cloud room…"
+                : "Nothing in your cloud room yet. Frames, videos and narrations you create are saved here."
+              : `${cloudCount} file${cloudCount === 1 ? "" : "s"} saved permanently in your private cloud room` +
+                  (fromElsewhere
+                    ? ` · ${fromElsewhere} from your other devices`
+                    : "") +
+                  (roomLoading ? " · checking for more…" : "") +
+                  ". Tap any file to open it.",
+          );
+          const grid = el("div", "room-grid");
+          for (const item of items) {
+            const meta = ROOM_KIND[item.kind];
+            const tile = el("div", "room-tile");
+            const link = el("a", "room-media");
+            link.href = item.url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.setAttribute(
+              "aria-label",
+              `Open ${meta.badge.replace(/^\S+\s/, "")} from ${formatStamp(item.createdAt || Date.now())}`,
+            );
+            if (item.kind === "image") {
+              const img = el("img");
+              img.src = item.url;
+              img.alt = "";
+              img.loading = "lazy";
+              link.append(img);
+            } else if (item.kind === "audio") {
+              link.append(el("div", "room-audio", "🎙️"));
+            } else {
+              const v = el("video");
+              v.src = `${item.url}#t=0.1`;
+              v.muted = true;
+              v.playsInline = true;
+              v.setAttribute("playsinline", "");
+              v.preload = "metadata";
+              link.append(v);
+            }
+            link.append(el("span", "room-badge", meta.badge));
+            const caption = el(
+              "span",
+              "room-caption",
+              `${formatStamp(item.createdAt || Date.now())}${item.text ? ` · ${diaryPreview(item.text)}` : ""}`,
+            );
+            const save = el("button", "room-save", "⬇️ Save");
+            save.type = "button";
+            save.addEventListener("click", () =>
+              saveToPhoneButton(
+                item.url,
+                meta.file === "frame" ? "image" : meta.file,
+                findDream(item.dreamId) || { createdAt: item.createdAt },
+              ).click(),
+            );
+            tile.append(link, caption, save);
+            grid.append(tile);
+          }
+          els.cloudRoom.replaceChildren(head, grid);
         }
 
         function jumpToDiaryEntry(id) {
@@ -7604,6 +8211,8 @@
         els.diaryBtn.addEventListener("click", openDiary);
         els.diaryBackBtn.addEventListener("click", () => closeDiary());
         els.diaryDoneBtn.addEventListener("click", exitApp);
+        els.tabDreams.addEventListener("click", () => setDiaryTab(false));
+        els.tabRoom.addEventListener("click", () => setDiaryTab(true));
         els.diaryJump.addEventListener("change", () => {
           const id = els.diaryJump.value;
           els.diaryJump.value = "";
