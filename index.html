@@ -2729,6 +2729,7 @@
           persistDreams();
           loadIntoEditor(dream);
           els.workspace.scrollTop = 0;
+          rescueDreamMedia(id); // move any temporary frame/video into the cloud while it still works
         }
 
         function deleteDream(id) {
@@ -3151,7 +3152,11 @@
                 img.src = image;
                 img.alt = "Storyboard frame for this dream";
                 img.loading = "lazy";
-                body.append(img, saveToPhoneButton(image, "image", dream));
+                body.append(
+                  img,
+                  mediaSourceNote(image, "image", dream.links?.image),
+                  saveToPhoneButton(image, "image", dream),
+                );
               }
               if (dream.video?.url) {
                 const video = el("video");
@@ -3170,7 +3175,7 @@
                         "hint",
                         isCloudMediaLink(dream.video.url)
                           ? "This video couldn’t load right now. Check your connection and try again."
-                          : "This video link has expired. Open the dream and generate it again.",
+                          : "This older video was kept on a temporary fal.ai link that has expired, so it can’t be recovered. Open the dream and tap 🎬 Generate 5s Dream Video: new videos are saved permanently to your cloud.",
                       ),
                     );
                   },
@@ -3178,6 +3183,7 @@
                 );
                 body.append(
                   video,
+                  mediaSourceNote(dream.video.url, "video", dream.links?.video),
                   saveToPhoneButton(dream.video.url, "video", dream),
                 );
               }
@@ -4128,7 +4134,7 @@
         let trialSessionNews = "";
         /** Mirror the Worker's answer after a successful trial request for `dreamId`. */
         function recordTrialReply(data, dreamId) {
-          const isNew = markTrialDream(dreamId);
+          const isNew = !isLegacyDreamId(dreamId) && markTrialDream(dreamId);
           const fromWorker = Number(data?.remainingTrials);
           const left = setTrialsRemaining(
             data &&
@@ -4149,9 +4155,18 @@
           trialSessionNews = "";
           return news;
         }
+        /**
+         * Older dreams (saved before dream sessions existed) have IDs that aren't
+         * "dream_<13-digit timestamp>". They're grandfathered: free to reopen, decode,
+         * re-frame and animate, and they never use up one of the 5 sessions.
+         */
+        const isLegacyDreamId = (id) =>
+          typeof id === "string" && id.length > 0 && !/^dream_\d{13}$/.test(id);
         /** Can this dream (or a brand new one, when null) use the free trial? */
         const trialOpenFor = (dreamId) =>
-          isTrialDream(dreamId) || trialsRemaining() > 0;
+          isLegacyDreamId(dreamId) ||
+          isTrialDream(dreamId) ||
+          trialsRemaining() > 0;
         // "Used up" means: this dream has no session and no sessions are left.
         const hasUsedTrial = () => !trialOpenFor(currentId);
         const hasDeveloperKey = () =>
@@ -4177,14 +4192,15 @@
 
         /**
          * Where an AI request should go.
-         * 'media' / 'decode': developer key > subscriber > free trial (5 dream sessions per device).
+         * Any AI action: developer key > subscriber > free trial (5 dream sessions per device;
+         * older dreams are free and don't use a session).
          * 'extra' (AI narration, AI decoding): developer key > subscriber only.
          */
         function routeAi(kind = "extra") {
           if (getFalKey()) return "dev";
           if (hasSubscriberAccess()) return "proxy";
-          if ((kind === "media" || kind === "decode") && !hasUsedTrial())
-            return "trial";
+          // Everything inside a dream session is included: frames, videos, every lens, AI narration.
+          if (!hasUsedTrial()) return "trial";
           return null;
         }
 
@@ -4630,6 +4646,8 @@
               };
               sessionImages.delete(dream.id);
               persistDreams();
+              if (!isCloudMediaLink(src))
+                setTimeout(() => rescueDreamMedia(dream.id), 0);
             } else {
               // A raw image came back (OpenAI base64): keep a small copy, full size for this session only.
               sessionImages.set(dream.id, src);
@@ -4715,13 +4733,109 @@
           ].find(isCloudMediaLink) || "";
         let lastProxyShortLink = "";
 
+        // ---- Moving temporary fal.ai links into the R2 cloud room ------------------------
+        // Files made with a Developer Override key (or before the R2 copy existed) live on
+        // fal.ai's temporary links, which expire. POST <worker>/archive copies one into
+        // DREAM_MEDIA and returns its permanent /media/ link. Expired links can't be saved.
+        const archiving = new Set(); // links being copied right now
+        const archiveDead = new Set(); // links that had already expired (this session)
+
+        async function archiveToCloud(url, kind, dreamId) {
+          if (!isWebLink(url) || isCloudMediaLink(url) || archiveDead.has(url))
+            return "";
+          const res = await fetch(`${proxyBase()}/archive`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url,
+              kind,
+              dreamId,
+              email: getSubscriberEmail(),
+              token: getSubscriberToken(),
+              deviceId: getDeviceId(),
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 410) archiveDead.add(url);
+          return res.ok && isCloudMediaLink(data?.url) ? data.url : "";
+        }
+
+        /** Copy any temporary frame/video of this dream into the cloud and update it. */
+        async function rescueDreamMedia(dreamId) {
+          const dream = findDream(dreamId);
+          if (!dream) return;
+          const jobs = [];
+          if (isWebLink(dream.image) && !isCloudMediaLink(dream.image))
+            jobs.push(["image", dream.image]);
+          if (isWebLink(dream.video?.url) && !isCloudMediaLink(dream.video.url))
+            jobs.push(["video", dream.video.url]);
+          for (const [kind, url] of jobs) {
+            if (archiving.has(url) || archiveDead.has(url)) continue;
+            archiving.add(url);
+            rerenderMediaFor(dreamId);
+            let cloud = "";
+            try {
+              cloud = await archiveToCloud(url, kind, dreamId);
+            } catch {
+              cloud = "";
+            }
+            archiving.delete(url);
+            const fresh = findDream(dreamId);
+            if (fresh && cloud) {
+              if (kind === "image" && fresh.image === url) fresh.image = cloud;
+              if (kind === "video" && fresh.video?.url === url)
+                fresh.video = { ...fresh.video, url: cloud };
+              persistDreams();
+            }
+            rerenderMediaFor(dreamId);
+          }
+        }
+
+        function rerenderMediaFor(dreamId) {
+          const dream = findDream(dreamId);
+          if (!dream) return;
+          if (currentId === dreamId && wsOpen) {
+            const image = sessionImages.get(dream.id) || dream.image;
+            if (
+              image &&
+              !dream.frameHidden &&
+              els.frameArea.querySelector("img")
+            )
+              renderFrame(image);
+            if (
+              dream.video?.url &&
+              els.videoArea.querySelector("video") &&
+              !videoJob
+            )
+              renderVideo(dream.video.url);
+          }
+          if (typeof diaryOpen !== "undefined" && diaryOpen) renderList();
+        }
+
+        /** When the diary opens: try once per session to save older temporary links. */
+        const rescueTried = new Set();
+        async function rescueOlderMedia() {
+          for (const dream of dreams) {
+            if (rescueTried.has(dream.id)) continue;
+            const needs =
+              (isWebLink(dream.image) && !isCloudMediaLink(dream.image)) ||
+              (isWebLink(dream.video?.url) &&
+                !isCloudMediaLink(dream.video.url));
+            if (!needs) continue;
+            rescueTried.add(dream.id);
+            await rescueDreamMedia(dream.id); // one at a time: gentle on the phone and the Worker
+          }
+        }
+
         /** The line beneath a frame/video saying where the file is kept. */
         function mediaSourceNote(url, kind = "image", shortUrl = "") {
           const note = el("p", "media-source");
           if (isCloudMediaLink(url)) {
             note.classList.add("cloud");
             const what = kind === "video" ? "video" : "frame";
-            note.append("✨ Saved to your cloud registry: ");
+            note.append(
+              `✨ Your ${what} has been saved permanently to your private cloud room for future access: `,
+            );
             const a = el("a", "", "View Link");
             a.href = isCloudMediaLink(shortUrl) ? shortUrl : url;
             a.target = "_blank";
@@ -4731,10 +4845,11 @@
             note.append(a);
           } else if (isWebLink(url)) {
             note.classList.add("temp");
-            note.textContent =
-              getFalKey() || getOpenaiKey()
-                ? "⏳ Temporary link: made with your Developer Override key, so it skipped your cloud. Save it to your phone, or remove the key in ⚙️ Settings to use the cloud."
-                : "⏳ Temporary link: the cloud copy didn’t complete this time. Save it to your phone soon.";
+            note.textContent = archiving.has(url)
+              ? "☁️ Moving this to your private cloud room…"
+              : archiveDead.has(url)
+                ? "⌛ This older file was on a temporary fal.ai link that has expired, so it can’t be moved to your cloud. Generate it again to save a permanent copy."
+                : "⏳ Temporary link: this file isn’t in your cloud yet, so it may expire. Save it to your phone to keep it.";
           } else {
             note.textContent = "📱 Stored on this phone.";
           }
@@ -4923,7 +5038,7 @@
                 document.createTextNode(
                   isCloudMediaLink(url)
                     ? "This video couldn’t load right now. Check your connection and try again."
-                    : "This video link has expired or can’t be played. Generate it again, and save it to your phone soon after.",
+                    : "This older video was kept on a temporary fal.ai link that has expired, so it can’t be recovered. Tap 🎬 Generate 5s Dream Video: new videos are saved permanently to your cloud.",
                 ),
               ]);
             },
@@ -5025,11 +5140,17 @@
           return url;
         }
 
-        async function proxyTts(text, narrator, signal) {
+        async function proxyTts(
+          text,
+          narrator,
+          signal,
+          { trial = false, dreamId = currentId } = {},
+        ) {
           const result = await proxyGenerate(
             getFalTtsModel(),
             { prompt: text, voice: narrator.voice, speed: narrator.speed },
             signal,
+            { trial, dreamId },
           );
           const url =
             result?.audio?.url ||
@@ -5074,7 +5195,7 @@
               const status = document.getElementById("narrationStatus");
               if (status) {
                 status.textContent =
-                  "AI voices are a Pro feature, so your free device voice will narrate. ";
+                  "AI voices need Pro or a free dream session, so your device voice will narrate this one. ";
                 const link = stripeLink("🔒 Upgrade to Pro (£12/mo)");
                 link.style.marginTop = "10px";
                 status.after(link);
@@ -5091,7 +5212,10 @@
             const audioUrl =
               route === "dev"
                 ? await requestTts(key, text, narrator, controller.signal)
-                : await proxyTts(text, narrator, controller.signal);
+                : await proxyTts(text, narrator, controller.signal, {
+                    trial: route === "trial",
+                    dreamId,
+                  });
             const target = findDream(dreamId);
             if (!target) return;
             target.narration = { kind: "ai", voice: narratorId, audioUrl };
@@ -5687,6 +5811,8 @@
             delete dream.narration; // narration belonged to the previous clip
             delete dream.pendingVideo;
             persistDreams();
+            if (!isCloudMediaLink(url))
+              setTimeout(() => rescueDreamMedia(dreamId), 0);
           }
           videoJob = null;
           setVideoBusy(false);
@@ -6997,6 +7123,7 @@
           if (diaryOpen) return;
           diaryOpen = true;
           renderList();
+          rescueOlderMedia();
           els.diary.hidden = false;
           els.diary.setAttribute("aria-hidden", "false");
           els.diary.scrollTop = 0;
