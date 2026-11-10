@@ -2193,6 +2193,7 @@
           falKey: "mdc.falKey.v1",
           falImageModel: "mdc.falImageModel.v1",
           falVideoModel: "mdc.falVideoModel.v1",
+          videoModelWorking: "mdc.videoModelWorking.v1", // first default model fal accepted
           falTtsModel: "mdc.falTtsModel.v1",
         };
 
@@ -3553,6 +3554,43 @@
             return DEFAULT_FAL_VIDEO_MODEL; // blank → 'fal-ai/luma-dream-machine/image-to-video'
           return saved;
         };
+
+        /**
+         * Image-to-video models to try, in order, when the Settings field is blank.
+         * If fal.ai says one doesn't exist (404 / retired), the next is tried, and the
+         * first that works is remembered for next time. A model typed into Settings is
+         * used on its own.
+         */
+        const FALLBACK_VIDEO_MODELS = [
+          DEFAULT_FAL_VIDEO_MODEL, // Luma Dream Machine (as requested)
+          "fal-ai/luma-dream-machine/ray-2-flash/image-to-video", // Luma Ray 2 Flash
+          "fal-ai/minimax/video-01/image-to-video", // MiniMax Video 01
+          "fal-ai/kling-video/v1.6/standard/image-to-video", // Kling 1.6 Standard
+          "fal-ai/ltx-2/image-to-video/fast", // LTX-2 Fast (6s minimum)
+        ];
+        function videoModelChain() {
+          const saved = normaliseModelId(readStore(STORAGE.falVideoModel, ""));
+          if (saved && !RETIRED_FAL_VIDEO_MODELS.includes(saved))
+            return [saved];
+          const working = normaliseModelId(
+            readStore(STORAGE.videoModelWorking, ""),
+          );
+          return [
+            ...new Set([working, ...FALLBACK_VIDEO_MODELS].filter(Boolean)),
+          ];
+        }
+        const rememberVideoModel = (model) => {
+          if (!normaliseModelId(readStore(STORAGE.falVideoModel, "")))
+            writeStore(STORAGE.videoModelWorking, model);
+        };
+        /** fal.ai says this model ID doesn't exist (or no longer does): try the next one. */
+        const isMissingModel = (status, detail = "") =>
+          status === 404 ||
+          status === 410 ||
+          (status === 422 &&
+            /not found|no longer|deprecated|unknown (model|endpoint|application)/i.test(
+              String(detail),
+            ));
         /** Classifies a pasted key by its prefix. */
         const keyKind = (raw) => {
           const key = String(raw || "").trim();
@@ -4098,10 +4136,19 @@
           }
           if (!res.ok) {
             const detail = data?.error || data?.message || data?.detail;
-            throw userError(
-              detail
-                ? `Dream Catcher server: ${typeof detail === "string" ? detail : "request failed"}.`
-                : `The Dream Catcher server returned an error (${res.status}).`,
+            throw Object.assign(
+              userError(
+                detail
+                  ? `Dream Catcher server: ${typeof detail === "string" ? detail : "request failed"}.`
+                  : `The Dream Catcher server returned an error (${res.status}).`,
+              ),
+              {
+                status: res.status,
+                detail:
+                  typeof detail === "string"
+                    ? detail
+                    : JSON.stringify(detail || ""),
+              },
             );
           }
           // The Worker replies with fal's own JSON, spread at the top level, after swapping the
@@ -5511,6 +5558,10 @@
               resolution: "540p",
               loop: true,
             });
+          } else if (/kling-video/.test(model)) {
+            Object.assign(payload, { duration: "5", aspect_ratio: "16:9" });
+          } else if (/ltx-2/.test(model)) {
+            Object.assign(payload, { duration: 6, generate_audio: false });
           }
           return payload;
         }
@@ -5549,33 +5600,38 @@
         }
 
         async function submitVideo(key, prompt, imageUrl) {
-          const model = getFalVideoModel();
-          const url = FAL_QUEUE_BASE + model;
-          const send = (body) =>
-            fetch(url, {
+          const chain = videoModelChain();
+          const missing = [];
+          for (const model of chain) {
+            const response = await fetch(FAL_QUEUE_BASE + model, {
               method: "POST",
               headers: falHeaders(key),
-              body: JSON.stringify(body),
+              body: JSON.stringify(videoPayload(model, prompt, imageUrl)),
             });
-
-          const response = await send(videoPayload(model, prompt, imageUrl));
-          if (!response.ok)
-            throw userError(
-              friendlyFalError(
-                response.status,
-                await readFalError(response),
-                model,
-              ),
-            );
-
-          const json = await response.json();
-          if (!json?.status_url || !json?.response_url)
-            throw userError("fal.ai did not return a queue ticket.");
-          return {
-            statusUrl: json.status_url,
-            responseUrl: json.response_url,
-            cancelUrl: json.cancel_url || "",
-          };
+            if (!response.ok) {
+              const detail = await readFalError(response);
+              if (isMissingModel(response.status, detail)) {
+                missing.push(model);
+                continue;
+              }
+              throw userError(friendlyFalError(response.status, detail, model));
+            }
+            const json = await response.json();
+            if (!json?.status_url || !json?.response_url)
+              throw userError("fal.ai did not return a queue ticket.");
+            rememberVideoModel(model);
+            return {
+              statusUrl: json.status_url,
+              responseUrl: json.response_url,
+              cancelUrl: json.cancel_url || "",
+              model,
+            };
+          }
+          throw userError(
+            chain.length === 1
+              ? `fal.ai can't find the video model "${chain[0]}". Check the Video Model ID in ⚙️ Settings, or clear it to use the built-in models.`
+              : `fal.ai couldn't find any of the video models tried (${missing.join(", ")}). Enter a current image-to-video Model ID in ⚙️ Settings → Developer Override.`,
+          );
         }
 
         /**
@@ -5595,7 +5651,6 @@
         ) {
           const dream = ensureCurrentDream();
           persistDreams();
-          const model = getFalVideoModel();
           const startedAt = Date.now();
           els.videoArea.replaceChildren();
           const job = {
@@ -5613,25 +5668,41 @@
           });
           let start;
           try {
-            start = await proxyGenerate(
-              model,
-              videoPayload(model, prompt, imageUrl),
-              undefined,
-              {
-                trial,
-                dreamId: dream.id,
-                path: "/video/start",
-                recordTrial: false,
-              },
-            );
+            const chain = videoModelChain();
+            const missing = [];
+            for (const model of chain) {
+              try {
+                start = await proxyGenerate(
+                  model,
+                  videoPayload(model, prompt, imageUrl),
+                  undefined,
+                  {
+                    trial,
+                    dreamId: dream.id,
+                    path: "/video/start",
+                    recordTrial: false,
+                  },
+                );
+                if (start?.jobId) rememberVideoModel(model);
+                break;
+              } catch (err) {
+                if (job.cancelled) return;
+                if (isMissingModel(err?.status, err?.detail)) {
+                  missing.push(model);
+                  continue;
+                }
+                throw err;
+              }
+            }
+            if (!start) {
+              throw userError(
+                chain.length === 1
+                  ? `fal.ai can't find the video model "${chain[0]}". Check the Video Model ID in ⚙️ Settings, or clear it to use the built-in models.`
+                  : `fal.ai couldn't find any of the video models tried (${missing.join(", ")}). Enter a current image-to-video Model ID in ⚙️ Settings → Developer Override.`,
+              );
+            }
           } catch (err) {
             if (job.cancelled) return;
-            if (err?.handled && /\(404\)/.test(err.message)) {
-              // Older Worker without the queue routes: use the one-shot render instead.
-              videoJob = null;
-              setVideoBusy(false);
-              return generateVideoViaProxyOneShot(prompt, imageUrl, { trial });
-            }
             videoJob = null;
             setVideoBusy(false);
             if (currentId === dream.id) {
@@ -5789,7 +5860,7 @@
           );
 
           try {
-            const model = getFalVideoModel();
+            const model = videoModelChain()[0];
             const result = await proxyGenerate(
               model,
               videoPayload(model, prompt, imageUrl),
