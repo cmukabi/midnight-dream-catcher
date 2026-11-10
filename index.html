@@ -96,6 +96,9 @@
         align-items: center;
         padding: 18px 0 10px;
       }
+      .home-header .brand-text {
+        margin-top: 6px;
+      }
       .corner-actions {
         position: absolute;
         top: 0;
@@ -118,11 +121,11 @@
         opacity: 0.85;
       }
       .home-logo {
-        width: 112px;
-        height: 112px;
-        border-radius: 26px;
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
         object-fit: cover;
-        margin-top: 30px;
+        margin-top: 34px;
         box-shadow:
           0 0 0 1px rgba(217, 119, 6, 0.35),
           0 0 40px rgba(217, 119, 6, 0.18);
@@ -134,8 +137,91 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 56px;
+        font-size: 32px;
         background: #120a00;
+      }
+      /* Settings + trial lock: full-screen black sheets above everything */
+      .settings-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: #000;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px
+          calc(env(safe-area-inset-bottom, 0px) + 24px);
+      }
+      .settings-modal[hidden] {
+        display: none;
+      }
+      .settings-sheet {
+        max-width: 560px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .settings-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .settings-head h2,
+      .lock-sheet h2 {
+        margin: 0;
+        font:
+          700 18px/1.25 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          system-ui,
+          sans-serif;
+        color: var(--amber-hi);
+        letter-spacing: 0.01em;
+        text-transform: none;
+      }
+      #settings > summary {
+        display: none;
+      }
+      #settings {
+        border: 0;
+        padding: 0;
+        background: transparent;
+      }
+      .lock-modal {
+        display: flex;
+        align-items: center;
+      }
+      .lock-modal[hidden] {
+        display: none;
+      }
+      .lock-sheet {
+        width: 100%;
+        padding: 22px 18px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: #050300;
+        text-align: center;
+      }
+      .lock-copy {
+        margin: 0;
+        color: var(--amber);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .core-action.lock-secondary {
+        min-height: 56px;
+        font-size: 16px;
+      }
+      .lock-text-btn {
+        background: transparent;
+        border: 0;
+        color: var(--amber-dim);
+        font-size: 15px;
+        min-height: 44px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
       }
       .header-bar {
         display: flex;
@@ -332,27 +418,54 @@
       .core-action:active {
         transform: scale(0.99);
       }
-      .diary-section {
-        display: flex;
+      .core-action.diary-open {
         flex-direction: column;
-        gap: 12px;
+        gap: 3px;
       }
-      .diary-section .list[hidden] {
-        display: none;
-      }
-      .diary-toggle::after {
-        content: "\25BE";
-        font-size: 15px;
-        transition: transform 200ms;
-      }
-      .diary-toggle[aria-expanded="true"]::after {
-        transform: rotate(180deg);
+      .core-sub {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--amber-dim);
       }
       .diary-empty {
-        padding: 8px 0 2px;
+        padding: 40px 0 8px;
         text-align: center;
         font-size: 15px;
         color: var(--amber-faint);
+      }
+      .diary-panel {
+        z-index: 14;
+      } /* the dream editor (z 15) opens on top of the diary */
+      .diary-title {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+      }
+      .diary-title h2 {
+        text-align: center;
+      }
+      .diary-subtitle {
+        font-size: 13px;
+        color: var(--amber-dim);
+      }
+      .diary-jump {
+        width: 100%;
+        min-height: 52px;
+        padding: 0 16px;
+        margin: 4px 0 14px;
+        border: 1px solid var(--amber-dim);
+        border-radius: 14px;
+        background: #120a00;
+        color: var(--amber-hi);
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .diary-jump[hidden] {
+        display: none;
       }
       .diary-decode {
         display: flex;
@@ -1409,10 +1522,49 @@
         <span class="home-logo logo-fallback" aria-hidden="true" hidden
           >🌙</span
         >
-        <h1 class="sr-only">Midnight Dream Catcher</h1>
-        <span id="clock" hidden></span>
+        <div class="brand-text">
+          <h1>Midnight Dream Catcher</h1>
+          <span class="clock" id="clock" aria-hidden="true"></span>
+        </div>
       </header>
       <div class="core-actions">
+        <button type="button" class="core-action" id="newBtn">
+          ➕ New Dream Entry
+        </button>
+        <button
+          type="button"
+          class="core-action diary-open"
+          id="diaryBtn"
+          aria-haspopup="dialog"
+          aria-controls="diary"
+        >
+          <span class="core-title">🌙 Dream Diary</span>
+          <span class="core-sub">Previous saved dreams</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- ======================= Settings modal (opened by the header ⚙️) ======================= -->
+    <div
+      class="settings-modal"
+      id="settingsModal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settingsTitle"
+      hidden
+    >
+      <div class="settings-sheet">
+        <div class="settings-head">
+          <h2 id="settingsTitle">⚙️ Settings</h2>
+          <button
+            type="button"
+            class="icon-btn"
+            id="settingsCloseBtn"
+            aria-label="Close settings"
+          >
+            ✕
+          </button>
+        </div>
         <a
           class="core-action account-pill"
           id="accountPill"
@@ -1421,219 +1573,282 @@
           rel="noopener"
           >🔒 Subscribe for Pro Access (£12/mo)</a
         >
-        <button type="button" class="core-action" id="newBtn">
-          ➕ New Dream Entry
-        </button>
-        <section class="diary-section" aria-labelledby="diaryBtn">
-          <button
-            type="button"
-            class="core-action diary-toggle"
-            id="diaryBtn"
-            aria-expanded="false"
-            aria-controls="dreamList"
-          >
-            🌙 Past Saved Dreams
-          </button>
-          <div class="list" id="dreamList" hidden></div>
-        </section>
-      </div>
-
-      <details id="settings" hidden>
-        <summary>⚙️ Settings</summary>
-        <div class="drawer-body">
-          <p class="subhead">👤 Subscriber Login (No API Key Needed)</p>
-          <label for="subEmail">Subscriber email</label>
-          <input
-            id="subEmail"
-            type="email"
-            inputmode="email"
-            autocomplete="email"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="you@example.com"
-          />
-          <label for="subToken">Access Code</label>
-          <div class="code-row">
+        <details id="settings" open>
+          <summary>⚙️ Settings</summary>
+          <div class="drawer-body">
+            <p class="subhead">👤 Subscriber Login (No API Key Needed)</p>
+            <label for="subEmail">Subscriber email</label>
             <input
-              id="subToken"
-              type="password"
-              autocomplete="off"
-              autocapitalize="characters"
+              id="subEmail"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              autocapitalize="off"
               spellcheck="false"
-              placeholder="Shown after checkout"
+              placeholder="you@example.com"
             />
-            <button
-              type="button"
-              id="toggleTokenBtn"
-              aria-pressed="false"
-              aria-label="Show access code"
-            >
-              👁
-            </button>
-          </div>
-          <button type="button" id="checkAccessBtn">
-            Check / Activate Access
-          </button>
-          <p class="sub-status" id="subStatus" aria-live="polite"></p>
-          <a
-            class="btn-link btn-primary"
-            id="subscribeBtn"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            >✨ Subscribe for Pro Access (£12/mo — 25 Monthly Creations)</a
-          >
-          <p class="hint">
-            Use the same email at checkout, then tap Check / Activate Access.
-            After checkout this phone activates automatically and saves your
-            Access Code; keep it to sign in on other devices.
-          </p>
-          <button type="button" id="signOutBtn" hidden>Sign Out</button>
-          <p class="hint">
-            Free forever without an account: 🎤 Dictation, 🔊 Read Back,
-            device-voice narration and the offline 🔮 symbol guide.
-          </p>
-
-          <details class="dev-override" id="devOverride">
-            <summary>🛠️ Developer Override (Own fal.ai Key)</summary>
-            <div class="drawer-body">
-              <p class="hint">
-                For the app owner's testing. A key saved here is used instead of
-                subscriber credits.
-              </p>
-              <label for="falKey">fal.ai API key</label>
+            <label for="subToken">Access Code</label>
+            <div class="code-row">
               <input
-                id="falKey"
+                id="subToken"
                 type="password"
                 autocomplete="off"
-                autocapitalize="off"
+                autocapitalize="characters"
                 spellcheck="false"
-                placeholder="fal_sk_… or KEY_ID:KEY_SECRET"
+                placeholder="Shown after checkout"
               />
-              <label for="falImageModel">Image Model ID</label>
-              <input
-                id="falImageModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="fal-ai/flux/schnell"
-              />
-              <label for="falVideoModel">Video Model ID</label>
-              <input
-                id="falVideoModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="fal-ai/minimax/video-01"
-              />
-              <label for="falTtsModel">Narration Model ID</label>
-              <input
-                id="falTtsModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="fal-ai/kokoro/american-english"
-              />
-              <label for="falLlmModel">Decoder model (fal any-llm)</label>
-              <input
-                id="falLlmModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="google/gemini-2.5-flash"
-              />
-              <p class="hint">
-                Model IDs apply to subscriber requests too. Leave blank for the
-                defaults.
-              </p>
-
-              <label for="openaiKey">OpenAI API key (optional)</label>
-              <input
-                id="openaiKey"
-                type="password"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="sk-…"
-              />
-              <label for="anthropicKey">Anthropic API key (optional)</label>
-              <input
-                id="anthropicKey"
-                type="password"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="sk-ant-…"
-              />
-              <label for="openaiTextModel">OpenAI decoder model</label>
-              <input
-                id="openaiTextModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="gpt-4o-mini"
-              />
-              <label for="anthropicModel">Anthropic decoder model</label>
-              <input
-                id="anthropicModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="claude-haiku-4-5"
-              />
-              <label for="openaiModel"
-                >OpenAI image model (frames backup)</label
+              <button
+                type="button"
+                id="toggleTokenBtn"
+                aria-pressed="false"
+                aria-label="Show access code"
               >
-              <input
-                id="openaiModel"
-                type="text"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="gpt-image-2"
-              />
-
-              <label for="proxyUrlOverride">Proxy URL override</label>
-              <input
-                id="proxyUrlOverride"
-                type="url"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="https://your-worker.your-subdomain.workers.dev"
-              />
-
-              <button type="button" id="saveSettingsBtn">
-                Save Developer Settings
+                👁
               </button>
-              <div class="row">
-                <button type="button" id="clearFalBtn">Clear fal Key</button>
-                <button type="button" id="clearOpenaiBtn">
-                  Clear OpenAI Key
-                </button>
-                <button type="button" id="clearAnthropicBtn" class="wide">
-                  Clear Anthropic Key
-                </button>
-              </div>
-              <p class="hint" id="keyStatus"></p>
-              <p class="hint">
-                Developer keys stay on this phone and go only to the service
-                they belong to. Order of use: developer keys first, then
-                subscriber credits.
-              </p>
             </div>
-          </details>
-        </div>
-      </details>
-    </main>
+            <button type="button" id="checkAccessBtn">
+              Check / Activate Access
+            </button>
+            <p class="sub-status" id="subStatus" aria-live="polite"></p>
+            <a
+              class="btn-link btn-primary"
+              id="subscribeBtn"
+              href="#"
+              target="_blank"
+              rel="noopener"
+              >✨ Subscribe for Pro Access (£12/mo — 25 Monthly Creations)</a
+            >
+            <p class="hint">
+              Use the same email at checkout, then tap Check / Activate Access.
+              After checkout this phone activates automatically and saves your
+              Access Code; keep it to sign in on other devices.
+            </p>
+            <button type="button" id="signOutBtn" hidden>Sign Out</button>
+            <p class="hint">
+              Free forever without an account: 🎤 Dictation, 🔊 Read Back,
+              device-voice narration and the offline 🔮 symbol guide.
+            </p>
+
+            <details class="dev-override" id="devOverride">
+              <summary>🛠️ Developer Override (Own fal.ai Key)</summary>
+              <div class="drawer-body">
+                <p class="hint">
+                  For the app owner's testing. A key saved here is used instead
+                  of subscriber credits.
+                </p>
+                <label for="falKey">fal.ai API key</label>
+                <input
+                  id="falKey"
+                  type="password"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="fal_sk_… or KEY_ID:KEY_SECRET"
+                />
+                <label for="falImageModel">Image Model ID</label>
+                <input
+                  id="falImageModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="fal-ai/flux/schnell"
+                />
+                <label for="falVideoModel">Video Model ID</label>
+                <input
+                  id="falVideoModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="fal-ai/luma-dream-machine/ray-2-flash/image-to-video"
+                />
+                <label for="falTtsModel">Narration Model ID</label>
+                <input
+                  id="falTtsModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="fal-ai/kokoro/american-english"
+                />
+                <label for="falLlmModel">Decoder model (fal any-llm)</label>
+                <input
+                  id="falLlmModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="google/gemini-2.5-flash"
+                />
+                <p class="hint">
+                  Model IDs apply to subscriber requests too. Leave blank for
+                  the defaults.
+                </p>
+
+                <label for="openaiKey">OpenAI API key (optional)</label>
+                <input
+                  id="openaiKey"
+                  type="password"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="sk-…"
+                />
+                <label for="anthropicKey">Anthropic API key (optional)</label>
+                <input
+                  id="anthropicKey"
+                  type="password"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="sk-ant-…"
+                />
+                <label for="openaiTextModel">OpenAI decoder model</label>
+                <input
+                  id="openaiTextModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="gpt-4o-mini"
+                />
+                <label for="anthropicModel">Anthropic decoder model</label>
+                <input
+                  id="anthropicModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="claude-haiku-4-5"
+                />
+                <label for="openaiModel"
+                  >OpenAI image model (frames backup)</label
+                >
+                <input
+                  id="openaiModel"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="gpt-image-2"
+                />
+
+                <label for="proxyUrlOverride">Proxy URL override</label>
+                <input
+                  id="proxyUrlOverride"
+                  type="url"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="https://your-worker.your-subdomain.workers.dev"
+                />
+
+                <button type="button" id="saveSettingsBtn">
+                  Save Developer Settings
+                </button>
+                <div class="row">
+                  <button type="button" id="clearFalBtn">Clear fal Key</button>
+                  <button type="button" id="clearOpenaiBtn">
+                    Clear OpenAI Key
+                  </button>
+                  <button type="button" id="clearAnthropicBtn" class="wide">
+                    Clear Anthropic Key
+                  </button>
+                </div>
+                <p class="hint" id="keyStatus"></p>
+                <p class="hint">
+                  Developer keys stay on this phone and go only to the service
+                  they belong to. Order of use: developer keys first, then
+                  subscriber credits.
+                </p>
+              </div>
+            </details>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ======================= Trial lock (shown only when starting a new dream) ======================= -->
+    <div
+      class="settings-modal lock-modal"
+      id="lockModal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lockTitle"
+      hidden
+    >
+      <div class="settings-sheet lock-sheet">
+        <h2 id="lockTitle">🔒 Trial Completed</h2>
+        <p class="lock-copy">
+          You’ve used all 5 free dream sessions. Subscribe to unlock 25 midnight
+          creations every month. Your saved dreams stay open, and dictation,
+          Read Back and the offline symbol guide stay free.
+        </p>
+        <a
+          class="core-action account-pill"
+          id="lockSubscribeBtn"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          >🔒 Subscribe for Pro Access (£12/mo)</a
+        >
+        <button
+          type="button"
+          class="core-action lock-secondary"
+          id="lockSignInBtn"
+        >
+          👤 Sign In (Email + Access Code)
+        </button>
+        <button type="button" class="lock-text-btn" id="lockContinueBtn">
+          Write this dream without AI
+        </button>
+        <button type="button" class="lock-text-btn" id="lockCloseBtn">
+          Not now
+        </button>
+      </div>
+    </div>
 
     <!-- ======================= Dream workspace (full-screen panel) ======================= -->
+    <!-- ======================= Dream Diary (full screen, like a new dream) ======================= -->
+    <section
+      class="workspace diary-panel"
+      id="diary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="diaryHeading"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="workspace-inner">
+        <header class="ws-header">
+          <button
+            type="button"
+            class="header-btn"
+            id="diaryBackBtn"
+            aria-label="Back to home"
+          >
+            ‹ Home
+          </button>
+          <div class="diary-title">
+            <h2 id="diaryHeading">Dream Diary</h2>
+            <span class="diary-subtitle">Previous saved dreams</span>
+          </div>
+          <button
+            type="button"
+            class="header-btn"
+            id="diaryDoneBtn"
+            aria-label="Done: save and exit"
+          >
+            🌙 Done
+          </button>
+        </header>
+        <label class="sr-only" for="diaryJump">Jump to a dream by date</label>
+        <select id="diaryJump" class="diary-jump" hidden></select>
+        <div class="list" id="dreamList"></div>
+      </div>
+    </section>
+
     <section
       class="workspace"
       id="workspace"
@@ -1947,7 +2162,8 @@
           falLlmModel: "mdc.falLlmModel.v1",
           subscriber: "mdc.subscriber.v1",
           trialUsed: "mdc.hasUsedTrial.v1", // legacy (1-creation trial)
-          trialsLeft: "mdc.trialsRemaining.v2", // 5-request trial (v1 was the 3-creation trial)
+          trialsLeft: "mdc.trialSessionsLeft.v1", // dream sessions left in the 5-dream trial
+          trialDreams: "mdc.trialDreams.v1", // dream IDs already registered as trial sessions
           deviceId: "mdc.deviceId.v1",
           proxyUrl: "mdc.proxyUrl.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
@@ -1971,7 +2187,10 @@
         const FAL_SYNC_BASE = "https://fal.run/";
         const FAL_QUEUE_BASE = "https://queue.fal.run/";
         const DEFAULT_FAL_IMAGE_MODEL = "fal-ai/flux/schnell";
-        const DEFAULT_FAL_VIDEO_MODEL = "fal-ai/minimax/video-01";
+        // Image-to-video: animates the storyboard frame (much faster than text-to-video).
+        // fal's original Luma Dream Machine I2V endpoint is deprecated; Ray 2 Flash is its fast successor.
+        const DEFAULT_FAL_VIDEO_MODEL =
+          "fal-ai/luma-dream-machine/ray-2-flash/image-to-video";
         const DEFAULT_FAL_TTS_MODEL = "fal-ai/kokoro/american-english";
         const NARRATION_MAX_CHARS = 2000;
         const TTS_TIMEOUT_MS = 90000;
@@ -2010,6 +2229,8 @@
         const RETIRED_FAL_VIDEO_MODELS = [
           "fal-ai/luma-dream-machine/ray-2",
           "fal-ai/luma-dream-machine",
+          "fal-ai/luma-dream-machine/image-to-video",
+          "fal-ai/minimax/video-01",
         ];
         const VIDEO_POLL_MS = 3000;
         const VIDEO_MAX_WAIT_MS = 15 * 60 * 1000;
@@ -2098,6 +2319,17 @@
           topNarrateBtn: $("topNarrateBtn"),
           diaryBtn: $("diaryBtn"),
           headerSettingsBtn: $("headerSettingsBtn"),
+          diary: $("diary"),
+          diaryBackBtn: $("diaryBackBtn"),
+          diaryDoneBtn: $("diaryDoneBtn"),
+          diaryJump: $("diaryJump"),
+          settingsModal: $("settingsModal"),
+          settingsCloseBtn: $("settingsCloseBtn"),
+          lockModal: $("lockModal"),
+          lockSubscribeBtn: $("lockSubscribeBtn"),
+          lockSignInBtn: $("lockSignInBtn"),
+          lockContinueBtn: $("lockContinueBtn"),
+          lockCloseBtn: $("lockCloseBtn"),
           accountPill: $("accountPill"),
           subEmail: $("subEmail"),
           subToken: $("subToken"),
@@ -2391,7 +2623,12 @@
           let dream = currentDream();
           if (!dream) {
             const now = Date.now();
-            dream = { id: newId(), createdAt: now, updatedAt: now, text: "" };
+            dream = {
+              id: newDreamId(),
+              createdAt: now,
+              updatedAt: now,
+              text: "",
+            };
             dreams.unshift(dream);
             currentId = dream.id;
           }
@@ -2467,7 +2704,16 @@
           const dream = currentDream();
           if (dream && isEmptyDream(dream))
             dreams = dreams.filter((d) => d.id !== dream.id);
-          currentId = null;
+          // Every "➕ New Dream Entry" gets its own timestamped ID straight away.
+          const now = Date.now();
+          const fresh = {
+            id: newDreamId(),
+            createdAt: now,
+            updatedAt: now,
+            text: "",
+          };
+          dreams.unshift(fresh);
+          currentId = fresh.id;
           persistDreams();
           els.savedFlag.textContent = "";
           els.director.open = false;
@@ -2749,7 +2995,7 @@
             toast("This entry has no dream text to decode.");
             return;
           }
-          const decoder = decoderProvider();
+          const decoder = decoderProvider(dreamId);
           if (!decoder) {
             saveMeaning(dreamId, lens, {
               mode: "offline",
@@ -2811,11 +3057,37 @@
           saveMeaning(dreamId, lens, reading); // re-renders the diary
         }
 
+        /** "Jump to a dream" menu: every saved dream by date and time. */
+        function renderDiaryJump(saved) {
+          const menu = els.diaryJump;
+          menu.hidden = saved.length < 2;
+          const first = el(
+            "option",
+            "",
+            `📅 Jump to a dream (${saved.length})`,
+          );
+          first.value = "";
+          menu.replaceChildren(
+            first,
+            ...saved.map((d) => {
+              const opt = el(
+                "option",
+                "",
+                `${formatStamp(d.createdAt)} · ${diaryPreview(d.text).slice(0, 40)}`,
+              );
+              opt.value = d.id;
+              return opt;
+            }),
+          );
+          menu.value = "";
+        }
+
         function renderList() {
           els.dreamList.replaceChildren();
           const saved = dreams
             .filter((d) => !isEmptyDream(d))
             .sort((a, b) => b.createdAt - a.createdAt);
+          renderDiaryJump(saved);
           if (saved.length === 0) {
             els.dreamList.append(el("div", "diary-empty", "No entries yet."));
             return;
@@ -2827,6 +3099,7 @@
               "details",
               isCurrent ? "diary-entry current" : "diary-entry",
             );
+            item.id = `entry-${dream.id}`;
             item.open = openDiaryEntries.has(dream.id);
 
             const summary = el("summary");
@@ -3727,7 +4000,7 @@
           endpoint,
           payload,
           signal,
-          { trial = false } = {},
+          { trial = false, dreamId = currentId } = {},
         ) {
           const email = trial ? "" : getSubscriberEmail();
           const token = trial ? "" : getSubscriberToken();
@@ -3737,10 +4010,11 @@
                 token,
                 trial: true,
                 deviceId: getDeviceId(),
+                dreamId,
                 endpoint,
                 payload,
               }
-            : { email, token, endpoint, payload };
+            : { email, token, dreamId, endpoint, payload };
           let res;
           try {
             res = await fetch(`${proxyBase()}/generate`, {
@@ -3811,16 +4085,16 @@
           // The Worker replies with fal's own JSON, spread at the top level, after swapping the
           // media link for its permanent R2 copy: images[0].url, video.url or url becomes
           // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits, or remainingTrials for trials.
-          if (trial) recordTrialReply(data);
+          if (trial) recordTrialReply(data, dreamId);
           lastProxyShortLink = shortLinkFrom(data);
           return data && typeof data === "object" ? data : {};
         }
 
-        // ---- 5-request free trial ------------------------------------------------------
-        // Five proxy requests per device before subscribing: storyboard frames, 5s videos
-        // and AI dream decoding all count. The Worker is the source of truth (it counts
-        // per deviceId and returns remainingTrials); this local counter mirrors its
-        // latest answer. Older devices start optimistic and are corrected on first reply.
+        // ---- 5-dream session trial --------------------------------------------------------
+        // One trial credit = one timestamped dream entry (dream_<ms>). Inside a dream that
+        // has started a session, frames, 5s videos and lens readings are unlimited.
+        // The Worker is the source of truth: every /generate carries { trial, deviceId,
+        // dreamId } and it replies with remainingTrials (dream sessions left).
         const TRIAL_ALLOWANCE = 5;
         function trialsRemaining() {
           const stored = Number(readStore(STORAGE.trialsLeft, NaN));
@@ -3837,22 +4111,58 @@
           renderAccount();
           return n;
         }
-        /** Mirror the Worker's trial balance after a successful trial creation. */
-        function recordTrialReply(data) {
+        const trialDreamIds = () => {
+          const list = readStore(STORAGE.trialDreams, []);
+          return Array.isArray(list)
+            ? list.filter((id) => typeof id === "string")
+            : [];
+        };
+        const isTrialDream = (id) =>
+          Boolean(id) && trialDreamIds().includes(id);
+        function markTrialDream(id) {
+          if (!id || isTrialDream(id)) return false;
+          writeStore(STORAGE.trialDreams, [...trialDreamIds(), id].slice(-50));
+          return true;
+        }
+
+        let trialSessionNews = "";
+        /** Mirror the Worker's answer after a successful trial request for `dreamId`. */
+        function recordTrialReply(data, dreamId) {
+          const isNew = markTrialDream(dreamId);
           const fromWorker = Number(data?.remainingTrials);
-          return setTrialsRemaining(
+          const left = setTrialsRemaining(
             data &&
               data.remainingTrials !== undefined &&
               Number.isFinite(fromWorker)
               ? fromWorker
-              : trialsRemaining() - 1,
+              : trialsRemaining() - (isNew ? 1 : 0),
           );
+          if (isNew) {
+            const used = TRIAL_ALLOWANCE - left;
+            trialSessionNews = `Free dream ${Math.max(1, used)} of ${TRIAL_ALLOWANCE} started: frames, videos and readings in this dream are unlimited.`;
+          }
+          return left;
         }
-        const hasUsedTrial = () => trialsRemaining() <= 0;
-        const freeLeftText = (left) =>
-          left > 0
-            ? `${left} free request${left === 1 ? "" : "s"} left.`
-            : "That was your last free request.";
+        /** One-off note for the toast after the request that opened a session. */
+        function takeTrialNews() {
+          const news = trialSessionNews;
+          trialSessionNews = "";
+          return news;
+        }
+        /** Can this dream (or a brand new one, when null) use the free trial? */
+        const trialOpenFor = (dreamId) =>
+          isTrialDream(dreamId) || trialsRemaining() > 0;
+        // "Used up" means: this dream has no session and no sessions are left.
+        const hasUsedTrial = () => !trialOpenFor(currentId);
+        const hasDeveloperKey = () =>
+          Boolean(getFalKey() || getOpenaiKey() || getAnthropicKey());
+
+        /** Unique, timestamp-based dream ID, e.g. dream_1731234567890. */
+        function newDreamId() {
+          let stamp = Date.now();
+          while (dreams.some((d) => d.id === `dream_${stamp}`)) stamp += 1;
+          return `dream_${stamp}`;
+        }
         function getDeviceId() {
           let id = readStore(STORAGE.deviceId, "");
           if (!id) {
@@ -3867,7 +4177,7 @@
 
         /**
          * Where an AI request should go.
-         * 'media' (frames, videos): developer key > subscriber > free trial (5 requests per device).
+         * 'media' / 'decode': developer key > subscriber > free trial (5 dream sessions per device).
          * 'extra' (AI narration, AI decoding): developer key > subscriber only.
          */
         function routeAi(kind = "extra") {
@@ -3889,7 +4199,7 @@
           box.append(
             el("strong", "", "\uD83D\uDD12 Trial Completed."),
             document.createTextNode(
-              ` You’ve used all ${TRIAL_ALLOWANCE} free requests. Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.`,
+              ` You’ve used all ${TRIAL_ALLOWANCE} free dream sessions. Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.`,
             ),
             actions,
           );
@@ -4245,12 +4555,16 @@
           return src;
         }
 
-        async function proxyImage(prompt, signal, { trial = false } = {}) {
+        async function proxyImage(
+          prompt,
+          signal,
+          { trial = false, dreamId = currentId } = {},
+        ) {
           const result = await proxyGenerate(
             getFalImageModel(),
             { prompt, image_size: "landscape_16_9", num_images: 1 },
             signal,
-            { trial },
+            { trial, dreamId },
           );
           const src =
             result?.images?.[0]?.url || result?.url || result?.image?.url;
@@ -4258,11 +4572,15 @@
           return src;
         }
 
-        async function generateFrame() {
+        /** Develops the storyboard frame; resolves to its link (or null on failure). */
+        async function generateFrame({
+          quiet = false,
+          label = "Developing your storyboard frame…",
+        } = {}) {
           saveNow();
           if (!hasDreamContent()) {
             toast("Dictate or type a dream first.");
-            return;
+            return null;
           }
           const prompt = promptForGeneration();
           const falKey = getFalKey();
@@ -4272,11 +4590,11 @@
           const trialRun = proxyRoute === "trial";
           if (!falKey && !openaiKey && !useProxy) {
             lockedNotice(els.frameArea, "🖼️ Storyboard frames");
-            return;
+            return null;
           }
           if (trialRun && trialInFlight) {
-            toast("A free request is already on its way.");
-            return;
+            toast("One moment: your last request is still on its way.");
+            return null;
           }
           if (trialRun) trialInFlight = true;
 
@@ -4286,7 +4604,7 @@
           els.frameBtn.disabled = true;
           els.frameBtn.textContent = "🖼️ Developing frame…";
           if (!videoJob || videoJob.dreamId !== currentId)
-            showProgress({ label: "Developing your storyboard frame…" });
+            showProgress({ label });
 
           const controller = new AbortController();
           const timeout = setTimeout(
@@ -4299,6 +4617,7 @@
               : useProxy
                 ? await proxyImage(prompt, controller.signal, {
                     trial: trialRun,
+                    dreamId: dream.id,
                   })
                 : await openaiImage(openaiKey, prompt, controller.signal);
 
@@ -4325,18 +4644,24 @@
             if (currentId === dream.id)
               renderFrame(sessionImages.get(dream.id) || dream.image);
             renderList();
-            if (trialRun) {
-              const left = trialsRemaining();
-              toast(`Frame developed and saved. ${freeLeftText(left)}`, 4000);
-              if (left <= 0 && currentId === dream.id)
-                appendTrialDone(els.frameArea);
-            } else {
-              toast(
-                isCloudMediaLink(dream.image)
-                  ? "Frame developed and saved to your cloud."
-                  : "Frame developed.",
-              );
+            if (!quiet) {
+              if (trialRun) {
+                const news = takeTrialNews();
+                toast(
+                  news
+                    ? `Frame developed and saved. ${news}`
+                    : "Frame developed and saved to your cloud.",
+                  news ? 5000 : 2500,
+                );
+              } else {
+                toast(
+                  isCloudMediaLink(dream.image)
+                    ? "Frame developed and saved to your cloud."
+                    : "Frame developed.",
+                );
+              }
             }
+            return sessionImages.get(dream.id) || dream.image || null;
           } catch (err) {
             const message = err?.handled
               ? err.message
@@ -4346,6 +4671,7 @@
             if (currentId === dream.id)
               handleAiError(els.frameArea, err, message);
             else toast(message, 4500);
+            return null;
           } finally {
             clearTimeout(timeout);
             frameJob = null;
@@ -4395,9 +4721,7 @@
           if (isCloudMediaLink(url)) {
             note.classList.add("cloud");
             const what = kind === "video" ? "video" : "frame";
-            note.append(
-              `✨ Your ${what} has been saved permanently to your private cloud room for future access: `,
-            );
+            note.append("✨ Saved to your cloud registry: ");
             const a = el("a", "", "View Link");
             a.href = isCloudMediaLink(shortUrl) ? shortUrl : url;
             a.target = "_blank";
@@ -4996,6 +5320,38 @@
           };
         }
 
+        // Comforting bedside messages that cycle while the clip renders.
+        const VIDEO_LOADER_LINES = [
+          "✨ Painting your dream frames…",
+          "🎬 Animating midnight vectors…",
+          "🔮 Rendering dream sequence…",
+          "🌙 Weaving moonlight into motion…",
+          "💫 Settling the stars into place…",
+        ];
+        const loaderLine = (elapsed) =>
+          VIDEO_LOADER_LINES[
+            Math.floor(elapsed / 3500) % VIDEO_LOADER_LINES.length
+          ];
+
+        /** Image-to-video payload: the storyboard frame is the primary input. */
+        function videoPayload(model, prompt, imageUrl) {
+          const motion = `${prompt}. Gentle, dreamlike camera motion; soft cinematic movement.`;
+          const payload = { prompt: motion, image_url: imageUrl };
+          if (/luma-dream-machine\/ray-2/.test(model)) {
+            Object.assign(payload, {
+              duration: "5s",
+              aspect_ratio: "16:9",
+              resolution: "540p",
+              loop: true,
+            });
+          }
+          return payload;
+        }
+
+        /** The frame to animate: the cloud link (or this session's copy). */
+        const frameForVideo = (dream) =>
+          (dream && (sessionImages.get(dream.id) || dream.image)) || "";
+
         function videoProgress(status, startedAt) {
           if (videoJob?.dreamId !== currentId) return;
           const elapsed = Date.now() - startedAt;
@@ -5004,14 +5360,14 @@
             0.95,
             0.05 + 0.9 * (1 - Math.exp(-elapsed / VIDEO_TYPICAL_MS)),
           );
-          let label = `Rendering your dream · ${formatElapsed(elapsed)}`;
+          let label = `${loaderLine(elapsed)} · ${formatElapsed(elapsed)}`;
           if (status?.status === "IN_QUEUE") {
             const pos = Number.isFinite(status.queue_position)
               ? ` (position ${status.queue_position + 1})`
               : "";
-            label = `Waiting in the fal.ai queue${pos} · ${formatElapsed(elapsed)}`;
+            label = `🌙 Waiting for a free studio${pos}… · ${formatElapsed(elapsed)}`;
           } else if (!status) {
-            label = `Sending your dream to fal.ai…`;
+            label = "✨ Painting your dream frames…";
           }
           showProgress({ label, fraction, cancellable: true });
         }
@@ -5025,7 +5381,7 @@
           else releaseWake("video");
         }
 
-        async function submitVideo(key, prompt) {
+        async function submitVideo(key, prompt, imageUrl) {
           const model = getFalVideoModel();
           const url = FAL_QUEUE_BASE + model;
           const send = (body) =>
@@ -5035,8 +5391,7 @@
               body: JSON.stringify(body),
             });
 
-          // Plain { prompt } works across fal.ai text-to-video models.
-          const response = await send({ prompt });
+          const response = await send(videoPayload(model, prompt, imageUrl));
           if (!response.ok)
             throw userError(
               friendlyFalError(
@@ -5060,7 +5415,11 @@
          * Subscriber path: one long POST to the Worker, which renders on fal.ai
          * and replies with the finished video. Progress is time-based.
          */
-        async function generateVideoViaProxy(prompt, { trial = false } = {}) {
+        async function generateVideoViaProxy(
+          prompt,
+          imageUrl,
+          { trial = false } = {},
+        ) {
           if (trial) trialInFlight = true;
           const dream = ensureCurrentDream();
           persistDreams();
@@ -5084,7 +5443,7 @@
               0.05 + 0.9 * (1 - Math.exp(-elapsed / VIDEO_TYPICAL_MS)),
             );
             showProgress({
-              label: `Rendering your dream on the Dream Catcher server · ${formatElapsed(elapsed)}`,
+              label: `${loaderLine(elapsed)} · ${formatElapsed(elapsed)}`,
               fraction,
               cancellable: true,
             });
@@ -5097,11 +5456,12 @@
           );
 
           try {
+            const model = getFalVideoModel();
             const result = await proxyGenerate(
-              getFalVideoModel(),
-              { prompt },
+              model,
+              videoPayload(model, prompt, imageUrl),
               controller.signal,
-              { trial },
+              { trial, dreamId: dream.id },
             );
             const url =
               result?.video?.url ||
@@ -5119,15 +5479,13 @@
               persistDreams();
               if (currentId === saved.id) renderVideo(url);
             }
-            if (trial) {
-              const left = trialsRemaining();
-              toast(
-                `Your dream video is ready and saved. ${freeLeftText(left)}`,
-                4500,
-              );
-              if (left <= 0 && currentId === dream.id)
-                appendTrialDone(els.videoArea);
-            }
+            const news = trial ? takeTrialNews() : "";
+            toast(
+              news
+                ? `Your dream video is ready and saved. ${news}`
+                : "Your dream video is ready and saved.",
+              news ? 5000 : 3000,
+            );
           } catch (err) {
             if (job.cancelled) return;
             videoJob = null;
@@ -5170,11 +5528,31 @@
             return;
           }
           if (route === "trial" && trialInFlight) {
-            toast("A free request is already on its way.");
+            toast("One moment: your last request is still on its way.");
             return;
           }
+
+          // Image-to-video needs the storyboard frame: develop it first if needed.
+          let imageUrl = frameForVideo(currentDream());
+          if (!imageUrl) {
+            els.videoBtn.disabled = true;
+            els.videoBtn.textContent = "✨ Painting your dream frame…";
+            try {
+              imageUrl = await generateFrame({
+                quiet: true,
+                label: "✨ Painting your dream frame first…",
+              });
+            } finally {
+              els.videoBtn.disabled = false;
+              els.videoBtn.textContent = "🎬 Generate 5s Dream Video";
+            }
+            if (!imageUrl) return; // the frame area already explains what went wrong
+          }
+
           if (route === "proxy" || route === "trial") {
-            await generateVideoViaProxy(prompt, { trial: route === "trial" });
+            await generateVideoViaProxy(prompt, imageUrl, {
+              trial: route === "trial" && !hasSubscriberAccess(),
+            });
             return;
           }
 
@@ -5188,7 +5566,7 @@
           videoProgress(null, startedAt);
 
           try {
-            const ticket = await submitVideo(key, prompt);
+            const ticket = await submitVideo(key, prompt, imageUrl);
             if (job.cancelled) {
               // Cancelled while submitting: cancel the ticket we just got too.
               if (ticket.cancelUrl)
@@ -6085,7 +6463,7 @@
           text,
           signal,
           system,
-          { trial = false } = {},
+          { trial = false, dreamId = currentId } = {},
         ) {
           const result = await proxyGenerate(
             "fal-ai/any-llm",
@@ -6095,14 +6473,12 @@
               system_prompt: system,
             },
             signal,
-            { trial },
+            { trial, dreamId },
           );
           if (trial) {
-            const left = trialsRemaining();
-            setTimeout(
-              () => toast(`Dream decoded. ${freeLeftText(left)}`, 4000),
-              0,
-            );
+            const news = takeTrialNews();
+            if (news)
+              setTimeout(() => toast(`Dream decoded. ${news}`, 5000), 0);
           }
           return result?.output || "";
         }
@@ -6111,7 +6487,7 @@
          * Picks the decoder: developer keys first (Anthropic > OpenAI > fal.ai),
          * then the subscriber proxy, otherwise null (offline guide).
          */
-        function decoderProvider() {
+        function decoderProvider(dreamId = currentId) {
           const anthropicKey = getAnthropicKey();
           if (anthropicKey)
             return {
@@ -6136,13 +6512,14 @@
               name: "Dream Catcher Pro",
               run: (t, sig, sys) => decodeViaProxy(t, sig, sys),
             };
-          if (routeAi("decode") === "trial")
+          if (trialOpenFor(dreamId)) {
             return {
               name: "Dream Catcher",
               trial: true,
               run: (t, sig, sys) =>
-                decodeViaProxy(t, sig, sys, { trial: true }),
+                decodeViaProxy(t, sig, sys, { trial: true, dreamId }),
             };
+          }
           return null;
         }
 
@@ -6570,32 +6947,99 @@
           }
         }
 
-        /** Settings stay out of sight on the landing page until the ⚙️ is tapped. */
+        /** Settings live in a full-screen modal opened by the header ⚙️. */
+        let settingsReturnFocus = null;
         function setSettingsVisible(visible) {
-          els.settings.hidden = !visible;
-          els.settings.open = visible;
+          els.settingsModal.hidden = !visible;
           els.headerSettingsBtn.setAttribute("aria-expanded", String(visible));
-        }
-
-        function openSettings() {
-          const reveal = () => {
-            setSettingsVisible(true);
-            els.settings.scrollIntoView({ behavior: "smooth", block: "start" });
-          };
-          if (wsOpen) {
-            closeWorkspace();
-            setTimeout(reveal, 380);
-          } else {
-            reveal();
+          document.body.classList.toggle(
+            "modal-open",
+            visible || !els.lockModal.hidden,
+          );
+          if (visible) {
+            settingsReturnFocus = document.activeElement;
+            els.settingsModal.scrollTop = 0;
+            requestAnimationFrame(() =>
+              els.settingsCloseBtn.focus({ preventScroll: true }),
+            );
+          } else if (settingsReturnFocus?.isConnected) {
+            settingsReturnFocus.focus({ preventScroll: true });
           }
         }
 
-        function setDiaryExpanded(expanded) {
-          els.diaryBtn.setAttribute("aria-expanded", String(expanded));
-          els.dreamList.hidden = !expanded;
-          if (expanded) renderList();
-          else
-            for (const v of els.dreamList.querySelectorAll("video")) v.pause();
+        function openSettings() {
+          closeLock();
+          setSettingsVisible(true);
+        }
+
+        // ---- Trial lock (only when starting a brand new dream after 5 sessions) ----
+        function openLock() {
+          els.lockSubscribeBtn.href = checkoutUrl();
+          els.lockModal.hidden = false;
+          document.body.classList.add("modal-open");
+          requestAnimationFrame(() =>
+            els.lockSubscribeBtn.focus({ preventScroll: true }),
+          );
+        }
+        function closeLock() {
+          if (els.lockModal.hidden) return;
+          els.lockModal.hidden = true;
+          document.body.classList.toggle(
+            "modal-open",
+            !els.settingsModal.hidden,
+          );
+        }
+
+        // ---- Full-screen Dream Diary ------------------------------------------------------
+        let diaryOpen = false;
+
+        function openDiary() {
+          if (diaryOpen) return;
+          diaryOpen = true;
+          renderList();
+          els.diary.hidden = false;
+          els.diary.setAttribute("aria-hidden", "false");
+          els.diary.scrollTop = 0;
+          document.body.classList.add("ws-open");
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => els.diary.classList.add("open")),
+          );
+          try {
+            history.pushState({ mdcDiary: true }, "");
+          } catch {
+            /* ignored */
+          }
+          setTimeout(() => {
+            if (diaryOpen && !wsOpen)
+              els.diaryBackBtn.focus({ preventScroll: true });
+          }, 360);
+        }
+
+        function closeDiary({ fromHistory = false } = {}) {
+          if (!diaryOpen) return;
+          diaryOpen = false;
+          for (const v of els.diary.querySelectorAll("video")) v.pause();
+          els.diary.classList.remove("open");
+          els.diary.setAttribute("aria-hidden", "true");
+          if (!wsOpen) document.body.classList.remove("ws-open");
+          setTimeout(() => {
+            if (!diaryOpen) els.diary.hidden = true;
+          }, 360);
+          if (!fromHistory) {
+            ignorePops++;
+            history.back();
+          }
+          els.diaryBtn.focus({ preventScroll: true });
+        }
+
+        function jumpToDiaryEntry(id) {
+          const entry = document.getElementById(`entry-${id}`);
+          if (!entry) return;
+          openDiaryEntries.add(id);
+          if (!entry.open) entry.open = true; // the toggle handler builds its body
+          requestAnimationFrame(() =>
+            entry.scrollIntoView({ behavior: "smooth", block: "start" }),
+          );
         }
 
         let ignorePops = 0; // popstates we caused ourselves via history.back()
@@ -6607,6 +7051,11 @@
         function openWorkspace() {
           if (wsOpen) return;
           wsOpen = true;
+          els.wsBackBtn.textContent = diaryOpen ? "‹ Diary" : "‹ Home";
+          els.wsBackBtn.setAttribute(
+            "aria-label",
+            diaryOpen ? "Back to Dream Diary" : "Back to home",
+          );
           els.workspace.hidden = false;
           els.workspace.setAttribute("aria-hidden", "false");
           els.workspace.scrollTop = 0;
@@ -6635,7 +7084,7 @@
           saveNow();
           els.workspace.classList.remove("open");
           els.workspace.setAttribute("aria-hidden", "true");
-          document.body.classList.remove("ws-open");
+          if (!diaryOpen) document.body.classList.remove("ws-open");
           setTimeout(() => {
             if (!wsOpen) els.workspace.hidden = true;
           }, 360);
@@ -6645,7 +7094,9 @@
           }
           wsHistoryEntry = false;
           renderList();
-          els.newBtn.focus({ preventScroll: true });
+          (diaryOpen ? els.diaryBackBtn : els.newBtn).focus({
+            preventScroll: true,
+          });
         }
 
         // =========================================================================
@@ -6710,21 +7161,48 @@
         );
         els.readBtn.addEventListener("click", toggleReading);
         els.newBtn.addEventListener("click", () => {
+          // A new dream is a new trial session: lock only when all 5 sessions are spent
+          // and there's no subscription or developer key to fall back on.
+          if (
+            !hasSubscriberAccess() &&
+            !hasDeveloperKey() &&
+            trialsRemaining() <= 0
+          ) {
+            openLock();
+            return;
+          }
           startNewDream();
           openWorkspace();
         });
-        els.wsBackBtn.addEventListener("click", () => closeWorkspace());
-        els.diaryBtn.addEventListener("click", () =>
-          setDiaryExpanded(
-            els.diaryBtn.getAttribute("aria-expanded") !== "true",
-          ),
-        );
-        els.headerSettingsBtn.addEventListener("click", () => {
-          if (els.settings.hidden) openSettings();
-          else setSettingsVisible(false);
+        els.lockContinueBtn.addEventListener("click", () => {
+          closeLock();
+          startNewDream();
+          openWorkspace();
         });
-        els.settings.addEventListener("toggle", () => {
-          if (!els.settings.open) setSettingsVisible(false);
+        els.lockCloseBtn.addEventListener("click", closeLock);
+        els.lockSignInBtn.addEventListener("click", () => {
+          closeLock();
+          openSettings();
+          setTimeout(() => els.subEmail.focus(), 60);
+        });
+        els.lockSubscribeBtn.addEventListener("click", () => {
+          els.lockSubscribeBtn.href = checkoutUrl();
+        });
+        els.settingsCloseBtn.addEventListener("click", () =>
+          setSettingsVisible(false),
+        );
+        els.wsBackBtn.addEventListener("click", () => closeWorkspace());
+        els.diaryBtn.addEventListener("click", openDiary);
+        els.diaryBackBtn.addEventListener("click", () => closeDiary());
+        els.diaryDoneBtn.addEventListener("click", exitApp);
+        els.diaryJump.addEventListener("change", () => {
+          const id = els.diaryJump.value;
+          els.diaryJump.value = "";
+          if (id) jumpToDiaryEntry(id);
+        });
+        els.headerSettingsBtn.addEventListener("click", () => {
+          if (els.settingsModal.hidden) openSettings();
+          else setSettingsVisible(false);
         });
         els.wsDoneBtn.addEventListener("click", exitApp);
         window.addEventListener("popstate", () => {
@@ -6733,10 +7211,20 @@
             return;
           }
           if (wsOpen) closeWorkspace({ fromHistory: true });
+          else if (diaryOpen) closeDiary({ fromHistory: true });
         });
         document.addEventListener("keydown", (event) => {
           if (event.key !== "Escape" || !els.sleepOverlay.hidden) return;
+          if (!els.lockModal.hidden) {
+            closeLock();
+            return;
+          }
+          if (!els.settingsModal.hidden) {
+            setSettingsVisible(false);
+            return;
+          }
           if (wsOpen) closeWorkspace();
+          else if (diaryOpen) closeDiary();
         });
         els.topNarrateBtn.addEventListener("click", async () => {
           const dream = currentDream();
