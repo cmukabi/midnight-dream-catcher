@@ -90,6 +90,53 @@
         flex-direction: column;
         gap: 10px;
       }
+      /* Home: centred logo, two quiet corner icons, nothing else */
+      .home-header {
+        position: relative;
+        align-items: center;
+        padding: 18px 0 10px;
+      }
+      .corner-actions {
+        position: absolute;
+        top: 0;
+        right: 0;
+        display: flex;
+        gap: 8px;
+      }
+      .icon-btn {
+        width: 44px;
+        min-height: 44px;
+        padding: 0;
+        border-radius: 50%;
+        background: transparent;
+        border: 1px solid var(--line);
+        font-size: 18px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.85;
+      }
+      .home-logo {
+        width: 112px;
+        height: 112px;
+        border-radius: 26px;
+        object-fit: cover;
+        margin-top: 30px;
+        box-shadow:
+          0 0 0 1px rgba(217, 119, 6, 0.35),
+          0 0 40px rgba(217, 119, 6, 0.18);
+      }
+      .home-logo[hidden] {
+        display: none;
+      }
+      .logo-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 56px;
+        background: #120a00;
+      }
       .header-bar {
         display: flex;
         align-items: center;
@@ -1327,41 +1374,43 @@
   <body>
     <!-- ======================= Landing ======================= -->
     <main class="landing" id="landing">
-      <header>
-        <div class="header-bar">
-          <img
-            class="brand-logo"
-            src="app-icon.png"
-            alt=""
-            width="30"
-            height="30"
-            onerror="this.remove()"
-          />
-          <div class="header-actions">
-            <button
-              type="button"
-              class="header-btn"
-              id="headerSettingsBtn"
-              aria-label="Settings and subscriber login"
-              aria-controls="settings"
-              aria-expanded="false"
-            >
-              ⚙️
-            </button>
-            <button
-              type="button"
-              class="header-btn"
-              id="exitBtn"
-              aria-label="Done: save and exit"
-            >
-              🌙 Done
-            </button>
-          </div>
+      <header class="home-header">
+        <div class="corner-actions">
+          <button
+            type="button"
+            class="icon-btn"
+            id="headerSettingsBtn"
+            aria-label="Settings and subscriber login"
+            aria-controls="settings"
+            aria-expanded="false"
+          >
+            ⚙️
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            id="exitBtn"
+            aria-label="Done: save and exit"
+          >
+            🌙
+          </button>
         </div>
-        <div class="brand-text">
-          <h1>Midnight Dream Catcher</h1>
-          <span class="clock" id="clock" aria-hidden="true"></span>
-        </div>
+        <img
+          class="home-logo"
+          src="app-icon.png"
+          alt="Midnight Dream Catcher"
+          width="112"
+          height="112"
+          onerror="
+            this.hidden = true;
+            this.nextElementSibling.hidden = false;
+          "
+        />
+        <span class="home-logo logo-fallback" aria-hidden="true" hidden
+          >🌙</span
+        >
+        <h1 class="sr-only">Midnight Dream Catcher</h1>
+        <span id="clock" hidden></span>
       </header>
       <div class="core-actions">
         <a
@@ -1898,7 +1947,7 @@
           falLlmModel: "mdc.falLlmModel.v1",
           subscriber: "mdc.subscriber.v1",
           trialUsed: "mdc.hasUsedTrial.v1", // legacy (1-creation trial)
-          trialsLeft: "mdc.trialsRemaining.v1",
+          trialsLeft: "mdc.trialsRemaining.v2", // 5-request trial (v1 was the 3-creation trial)
           deviceId: "mdc.deviceId.v1",
           proxyUrl: "mdc.proxyUrl.v1",
           model: "mdc.imageModel.v1", // OpenAI image model
@@ -2750,6 +2799,7 @@
               createdAt: Date.now(),
               fallbackReason: reason,
               upgrade: Boolean(err?.upgrade),
+              trialDone: Boolean(err?.trialDone),
               ...decodeOffline(text, lens),
             };
             toast(`${reason} Showing the offline guide instead.`, 4000);
@@ -3762,22 +3812,21 @@
           // media link for its permanent R2 copy: images[0].url, video.url or url becomes
           // "<worker>/media/<uuid>.png|mp4". Plus remainingCredits, or remainingTrials for trials.
           if (trial) recordTrialReply(data);
+          lastProxyShortLink = shortLinkFrom(data);
           return data && typeof data === "object" ? data : {};
         }
 
-        // ---- 3-creation free trial ----------------------------------------------------
-        // Three AI images or videos through the proxy per device, before subscribing.
-        // The Worker is the source of truth (it counts per deviceId and returns
-        // remainingTrials); this local counter mirrors its latest answer.
-        const TRIAL_ALLOWANCE = 3;
+        // ---- 5-request free trial ------------------------------------------------------
+        // Five proxy requests per device before subscribing: storyboard frames, 5s videos
+        // and AI dream decoding all count. The Worker is the source of truth (it counts
+        // per deviceId and returns remainingTrials); this local counter mirrors its
+        // latest answer. Older devices start optimistic and are corrected on first reply.
+        const TRIAL_ALLOWANCE = 5;
         function trialsRemaining() {
           const stored = Number(readStore(STORAGE.trialsLeft, NaN));
           if (Number.isFinite(stored))
             return Math.max(0, Math.min(TRIAL_ALLOWANCE, Math.floor(stored)));
-          // Devices from the old 1-creation trial have used one already.
-          return readStore(STORAGE.trialUsed, false) === true
-            ? TRIAL_ALLOWANCE - 1
-            : TRIAL_ALLOWANCE;
+          return TRIAL_ALLOWANCE;
         }
         function setTrialsRemaining(count) {
           const n = Math.max(
@@ -3802,8 +3851,8 @@
         const hasUsedTrial = () => trialsRemaining() <= 0;
         const freeLeftText = (left) =>
           left > 0
-            ? `${left} free creation${left === 1 ? "" : "s"} left.`
-            : "That was your last free creation.";
+            ? `${left} free request${left === 1 ? "" : "s"} left.`
+            : "That was your last free request.";
         function getDeviceId() {
           let id = readStore(STORAGE.deviceId, "");
           if (!id) {
@@ -3818,13 +3867,14 @@
 
         /**
          * Where an AI request should go.
-         * 'media' (frames, videos): developer key > subscriber > free trial (3 per device).
+         * 'media' (frames, videos): developer key > subscriber > free trial (5 requests per device).
          * 'extra' (AI narration, AI decoding): developer key > subscriber only.
          */
         function routeAi(kind = "extra") {
           if (getFalKey()) return "dev";
           if (hasSubscriberAccess()) return "proxy";
-          if (kind === "media" && !hasUsedTrial()) return "trial";
+          if ((kind === "media" || kind === "decode") && !hasUsedTrial())
+            return "trial";
           return null;
         }
 
@@ -3839,7 +3889,7 @@
           box.append(
             el("strong", "", "\uD83D\uDD12 Trial Completed."),
             document.createTextNode(
-              ` You’ve used all ${TRIAL_ALLOWANCE} free creations. Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.`,
+              ` You’ve used all ${TRIAL_ALLOWANCE} free requests. Please subscribe to unlock 25 midnight creations every month. Dictation, Read Back, device-voice narration and the offline symbol guide stay free.`,
             ),
             actions,
           );
@@ -4084,7 +4134,7 @@
           card.append(img, hide);
           const save = saveToPhoneButton(src, "image", dream);
           save.style.marginTop = "10px";
-          card.append(mediaSourceNote(src), save);
+          card.append(mediaSourceNote(src, "image", dream?.links?.image), save);
 
           const show = el(
             "button",
@@ -4225,7 +4275,7 @@
             return;
           }
           if (trialRun && trialInFlight) {
-            toast("A free creation is already on its way.");
+            toast("A free request is already on its way.");
             return;
           }
           if (trialRun) trialInFlight = true;
@@ -4255,6 +4305,10 @@
             if (isWebLink(src)) {
               // Lightweight schema: only the cloud text link is stored, never the pixels.
               dream.image = src;
+              dream.links = {
+                ...(dream.links || {}),
+                image: useProxy ? lastProxyShortLink : "",
+              };
               sessionImages.delete(dream.id);
               persistDreams();
             } else {
@@ -4311,22 +4365,45 @@
         const isWebLink = (value) =>
           typeof value === "string" && /^https?:\/\//i.test(value);
 
-        /** True for permanent copies the Worker stored in the DREAM_MEDIA R2 bucket. */
-        const isCloudMediaLink = (url) =>
-          isWebLink(url) && url.startsWith(`${proxyBase()}/media/`);
+        /**
+         * True for permanent copies the Worker stored in the DREAM_MEDIA R2 bucket.
+         * Any link on the proxy's own domain counts, so both the long /media/<uuid>
+         * form and the Worker's shortened links are recognised.
+         */
+        const isCloudMediaLink = (url) => {
+          if (!isWebLink(url)) return false;
+          try {
+            return new URL(url).origin === new URL(proxyBase()).origin;
+          } catch {
+            return false;
+          }
+        };
 
-        /** Small line under a frame/video showing exactly where the file lives. */
-        function mediaSourceNote(url) {
+        /** Optional dedicated short link the Worker may send alongside the media. */
+        const shortLinkFrom = (reply) =>
+          [
+            reply?.shortUrl,
+            reply?.shortLink,
+            reply?.short_url,
+            reply?.shortlink,
+          ].find(isCloudMediaLink) || "";
+        let lastProxyShortLink = "";
+
+        /** The line beneath a frame/video saying where the file is kept. */
+        function mediaSourceNote(url, kind = "image", shortUrl = "") {
           const note = el("p", "media-source");
           if (isCloudMediaLink(url)) {
             note.classList.add("cloud");
+            const what = kind === "video" ? "video" : "frame";
             note.append(
-              "✨ Your creations have been saved at this permanent link for future access: ",
+              `✨ Your ${what} has been saved permanently to your private cloud room for future access: `,
             );
-            const a = el("a", "", url.replace(/^https?:\/\//, ""));
-            a.href = url;
+            const a = el("a", "", "View Link");
+            a.href = isCloudMediaLink(shortUrl) ? shortUrl : url;
             a.target = "_blank";
-            a.rel = "noopener";
+            a.rel = "noopener noreferrer";
+            a.title = a.href;
+            a.setAttribute("aria-label", `View your ${what} in a new tab`);
             note.append(a);
           } else if (isWebLink(url)) {
             note.classList.add("temp");
@@ -4557,7 +4634,7 @@
 
           els.videoArea.replaceChildren(
             video,
-            mediaSourceNote(url),
+            mediaSourceNote(url, "video", dream?.links?.video),
             save,
             narrateBtn,
             ...(links.childElementCount ? [links] : []),
@@ -5034,7 +5111,14 @@
             if (!url)
               throw userError("The server finished but returned no video.");
             if (job.cancelled) return;
+            const shortLink = lastProxyShortLink;
             completeVideo(dream.id, url);
+            const saved = findDream(dream.id);
+            if (saved && shortLink) {
+              saved.links = { ...(saved.links || {}), video: shortLink };
+              persistDreams();
+              if (currentId === saved.id) renderVideo(url);
+            }
             if (trial) {
               const left = trialsRemaining();
               toast(
@@ -5086,7 +5170,7 @@
             return;
           }
           if (route === "trial" && trialInFlight) {
-            toast("A free creation is already on its way.");
+            toast("A free request is already on its way.");
             return;
           }
           if (route === "proxy" || route === "trial") {
@@ -5221,6 +5305,7 @@
           const dream = findDream(dreamId);
           if (dream) {
             dream.video = { url, createdAt: Date.now() };
+            if (dream.links) delete dream.links.video; // belonged to the previous clip
             delete dream.narration; // narration belonged to the previous clip
             delete dream.pendingVideo;
             persistDreams();
@@ -5996,7 +6081,12 @@
           return data?.output || "";
         }
 
-        async function decodeViaProxy(text, signal, system) {
+        async function decodeViaProxy(
+          text,
+          signal,
+          system,
+          { trial = false } = {},
+        ) {
           const result = await proxyGenerate(
             "fal-ai/any-llm",
             {
@@ -6005,7 +6095,15 @@
               system_prompt: system,
             },
             signal,
+            { trial },
           );
+          if (trial) {
+            const left = trialsRemaining();
+            setTimeout(
+              () => toast(`Dream decoded. ${freeLeftText(left)}`, 4000),
+              0,
+            );
+          }
           return result?.output || "";
         }
 
@@ -6037,6 +6135,13 @@
             return {
               name: "Dream Catcher Pro",
               run: (t, sig, sys) => decodeViaProxy(t, sig, sys),
+            };
+          if (routeAi("decode") === "trial")
+            return {
+              name: "Dream Catcher",
+              trial: true,
+              run: (t, sig, sys) =>
+                decodeViaProxy(t, sig, sys, { trial: true }),
             };
           return null;
         }
@@ -6216,6 +6321,7 @@
               createdAt: Date.now(),
               fallbackReason: reason,
               upgrade: Boolean(err?.upgrade),
+              trialDone: Boolean(err?.trialDone),
               ...decodeOffline(text, lens),
             });
           } finally {
@@ -6288,7 +6394,9 @@
                 `${reading.fallbackReason} Showing the offline guide instead.`,
               ),
             );
-            if (reading.upgrade)
+            if (reading.trialDone && !hasSubscriberAccess())
+              body.push(trialDoneBox());
+            else if (reading.upgrade)
               body.push(stripeLink("✨ Subscribe / Renew Pro (£12/mo)"));
           }
           const current = normText(els.dreamText.value);
@@ -6335,13 +6443,15 @@
             !reading.fallbackReason &&
             !hasSubscriberAccess()
           ) {
-            body.push(
-              el(
-                "p",
-                "hint",
-                "Free offline guide. Sign in or upgrade to Pro for a personal AI reading.",
-              ),
-            );
+            if (hasUsedTrial() && !decoderProvider()) body.push(trialDoneBox());
+            else
+              body.push(
+                el(
+                  "p",
+                  "hint",
+                  "Free offline guide. Sign in or upgrade to Pro for a personal AI reading.",
+                ),
+              );
           }
           body.push(
             el(
