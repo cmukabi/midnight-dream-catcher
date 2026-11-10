@@ -1379,6 +1379,12 @@
         font-size: 14px;
         color: #b7791f;
       }
+      .video-error a {
+        color: var(--amber-hi);
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
       .media-source.temp {
         color: #f59e0b;
       }
@@ -3183,21 +3189,7 @@
                 video.playsInline = true;
                 video.setAttribute("playsinline", "");
                 video.preload = "none";
-                video.addEventListener(
-                  "error",
-                  () => {
-                    video.replaceWith(
-                      el(
-                        "p",
-                        "hint",
-                        isCloudMediaLink(dream.video.url)
-                          ? "This video couldn’t load right now. Check your connection and try again."
-                          : "This older video was kept on a temporary fal.ai link that has expired, so it can’t be recovered. Open the dream and tap 🎬 Generate 5s Dream Video: new videos are saved permanently to your cloud.",
-                      ),
-                    );
-                  },
-                  { once: true },
-                );
+                handleVideoError(video, dream.video.url);
                 body.append(
                   video,
                   mediaSourceNote(dream.video.url, "video", dream.links?.video),
@@ -5043,6 +5035,46 @@
         }
 
         /** Video player + downloads + narration controls for the open dream. */
+        /**
+         * If a clip won't play: retry once, then swap only the player for a short note
+         * and an "Open video" link. The cloud label, Save button and narration stay put.
+         */
+        function handleVideoError(video, url, onGiveUp = () => {}) {
+          let retried = false;
+          video.addEventListener("error", () => {
+            if (!retried && isCloudMediaLink(url)) {
+              retried = true;
+              setTimeout(() => {
+                if (!video.isConnected) return;
+                video.src = `${url}${url.includes("?") ? "&" : "?"}retry=${Date.now()}`;
+                video.load();
+              }, 1500);
+              return;
+            }
+            onGiveUp();
+            const box = el("div", "notice video-error");
+            if (isCloudMediaLink(url)) {
+              box.append(
+                document.createTextNode(
+                  "This video is saved in your cloud but your browser couldn’t play it here. ",
+                ),
+              );
+              const open = el("a", "", "▶️ Open video in a new tab");
+              open.href = url;
+              open.target = "_blank";
+              open.rel = "noopener noreferrer";
+              box.append(open);
+            } else {
+              box.append(
+                document.createTextNode(
+                  "This older video was kept on a temporary fal.ai link that has expired, so it can’t be recovered. Tap 🎬 Generate 5s Dream Video: new videos are saved permanently to your cloud.",
+                ),
+              );
+            }
+            if (video.isConnected) video.replaceWith(box);
+          });
+        }
+
         function renderVideo(url) {
           detachNarration();
           const dream = currentDream();
@@ -5054,20 +5086,7 @@
           video.playsInline = true;
           video.setAttribute("playsinline", "");
           video.preload = "metadata";
-          video.addEventListener(
-            "error",
-            () => {
-              detachNarration();
-              notice(els.videoArea, [
-                document.createTextNode(
-                  isCloudMediaLink(url)
-                    ? "This video couldn’t load right now. Check your connection and try again."
-                    : "This older video was kept on a temporary fal.ai link that has expired, so it can’t be recovered. Tap 🎬 Generate 5s Dream Video: new videos are saved permanently to your cloud.",
-                ),
-              ]);
-            },
-            { once: true },
-          );
+          handleVideoError(video, url, () => detachNarration());
 
           const save = saveToPhoneButton(url, "video", dream);
           const links = el("div", "media-links");
