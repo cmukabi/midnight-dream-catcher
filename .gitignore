@@ -1,0 +1,15 @@
+# Private Server Configurations & Local Secrets
+.env
+.env.local
+.env.*.local
+secrets.js
+config.private.js
+
+# Node / Build Outputs (if any)
+node_modules/
+dist/
+.tmp/
+
+# OS-Specific system junk files
+.DS_Store
+Thumbs.db
